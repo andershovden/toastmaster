@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101317">
+<title>Toastmaster</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ============ OPPSETT: last inn dokument ============ -->
+<section id="view-setup" class="view">
+  <header class="bar">
+    <h1 class="bar-title">Toastmaster</h1>
+  </header>
+
+  <div class="pad">
+    <p class="lead">Last opp dokumentet med introduksjonene, eller lim inn teksten.</p>
+
+    <label class="btn btn-primary btn-block" for="file">
+      Velg dokument (.txt, .md, .docx)
+      <input id="file" type="file" accept=".txt,.md,.markdown,.text,.docx" hidden>
+    </label>
+
+    <p class="or">eller</p>
+
+    <textarea id="paste" rows="10" placeholder="# Ola Nordmann
+Leses av: Anders
+
+Her er teksten du sier når du introduserer Ola ..."></textarea>
+
+    <button id="use-paste" class="btn btn-primary btn-block">Bruk teksten</button>
+    <button id="use-example" class="btn btn-ghost btn-block">Prøv med eksempeltekst</button>
+
+    <p id="setup-error" class="error" hidden></p>
+
+    <details class="help">
+      <summary>Slik formaterer du dokumentet</summary>
+      <p>Én overskrift per taler, og teksten under. Hvem som leser kan stå i overskriften eller på egen linje:</p>
+      <pre># Ola Nordmann (Anders)
+
+Velkommen til vår neste taler ...
+
+# Kari Nordmann
+Leses av: Fredrik
+
+Neste ut er ...</pre>
+      <p>Overskrifter kan skrives som <code># Navn</code>, <code>## Navn</code> eller <code>[Navn]</code>.
+         Leser kan angis med <code>Leses av:</code>, <code>Leser:</code>, <code>Toastmaster:</code> eller i parentes etter navnet.
+         Tekst i <code>[hakeparentes]</code> vises som regibeskjed, f.eks. <code>[vent på applaus]</code>.</p>
+    </details>
+  </div>
+</section>
+
+<!-- ============ LISTE: hvem er du + hvem skal introduseres ============ -->
+<section id="view-list" class="view" hidden>
+  <header class="bar">
+    <h1 class="bar-title">Introduksjoner</h1>
+    <button id="menu-btn" class="bar-btn" aria-label="Meny">•••</button>
+  </header>
+
+  <div class="pad">
+    <div class="picker">
+      <span class="picker-label">Hvem er du?</span>
+      <div id="who" class="segmented" role="group" aria-label="Velg hvem du er"></div>
+    </div>
+
+    <div class="picker">
+      <span class="picker-label">Vis</span>
+      <div class="segmented" role="group" aria-label="Filter">
+        <button class="seg" data-filter="mine">Mine</button>
+        <button class="seg" data-filter="alle">Alle</button>
+      </div>
+    </div>
+
+    <ul id="list" class="list"></ul>
+    <p id="list-empty" class="empty" hidden></p>
+  </div>
+</section>
+
+<!-- ============ LESEVISNING ============ -->
+<section id="view-read" class="view" hidden>
+  <header class="bar bar-read">
+    <button id="back" class="bar-btn" aria-label="Tilbake til listen">‹</button>
+    <div class="bar-mid">
+      <div id="read-name" class="read-name"></div>
+      <div id="read-count" class="read-count"></div>
+    </div>
+    <div class="bar-right">
+      <button id="font-down" class="bar-btn" aria-label="Mindre tekst">A−</button>
+      <button id="font-up" class="bar-btn" aria-label="Større tekst">A+</button>
+    </div>
+  </header>
+
+  <article id="read-body" class="read-body"></article>
+
+  <nav class="readnav">
+    <button id="prev" class="btn btn-nav">‹ Forrige</button>
+    <button id="next" class="btn btn-nav">Neste ›</button>
+  </nav>
+</section>
+
+<!-- ============ MENY ============ -->
+<div id="sheet" class="sheet" hidden>
+  <div class="sheet-backdrop" data-close></div>
+  <div class="sheet-panel" role="dialog" aria-label="Meny">
+    <button id="m-edit" class="sheet-item">Rediger / bytt tekst</button>
+    <button id="m-theme" class="sheet-item">Bytt lyst / mørkt</button>
+    <button id="m-clear" class="sheet-item danger">Slett lagret tekst</button>
+    <button class="sheet-item" data-close>Avbryt</button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
