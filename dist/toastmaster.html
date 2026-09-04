@@ -1,0 +1,1030 @@
+<title>Toastmaster</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&amp;family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&amp;display=swap">
+<style>
+/* Toastmaster – mobil-først lesevisning */
+
+:root {
+  --bg: #101317;
+  --bg-elev: #191d23;
+  --bg-elev-2: #222831;
+  --text: #f2f4f7;
+  --text-dim: #9aa4b2;
+  --accent: #ffb454;
+  --line: #2b323c;
+  --danger: #ff6b6b;
+  --read-size: 30px;
+  --font-ui: "Archivo", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-read: "Literata", Georgia, "Times New Roman", serif;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html[data-theme="light"] {
+  --bg: #fbfaf7;
+  --bg-elev: #ffffff;
+  --bg-elev-2: #f0ede7;
+  --text: #16191d;
+  --text-dim: #616b78;
+  --accent: #a5620a;
+  --line: #e0dcd4;
+  --danger: #b3261e;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+}
+
+body { display: flex; flex-direction: column; }
+
+.view { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.view[hidden] { display: none; }
+
+/* ---------- topplinje ---------- */
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: calc(10px + var(--safe-top)) 12px 10px;
+  background: var(--bg-elev);
+  border-bottom: 1px solid var(--line);
+}
+
+.bar-title { flex: 1; margin: 0; font-family: var(--font-read); font-size: 19px; font-weight: 600; letter-spacing: .1px; }
+
+.bar-btn {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-elev-2);
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bar-btn:active { background: var(--line); }
+
+.bar-read .bar-mid { flex: 1; min-width: 0; text-align: center; }
+.bar-right { display: flex; gap: 6px; }
+.read-name {
+  font-family: var(--font-read);
+  font-size: 16px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.read-count { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+/* ---------- innhold ---------- */
+.pad { padding: 16px 16px calc(28px + var(--safe-bottom)); overflow-y: auto; flex: 1; }
+.lead { margin: 0 0 16px; color: var(--text-dim); font-size: 15px; line-height: 1.5; }
+.or { text-align: center; color: var(--text-dim); margin: 14px 0; font-size: 14px; }
+
+.btn {
+  display: block;
+  min-height: 52px;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-elev-2);
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+.btn:active { transform: scale(.99); }
+.btn-block { width: 100%; margin-bottom: 10px; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #16191d; }
+.btn-ghost { background: transparent; }
+
+textarea {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-elev);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  margin-bottom: 10px;
+  resize: vertical;
+}
+
+.error { color: var(--danger); font-size: 15px; line-height: 1.4; }
+
+.help { margin-top: 24px; color: var(--text-dim); font-size: 14px; line-height: 1.55; }
+.help summary { cursor: pointer; padding: 10px 0; font-weight: 600; color: var(--text); }
+.help pre {
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.help code { background: var(--bg-elev); padding: 1px 5px; border-radius: 5px; }
+
+/* ---------- velgere ---------- */
+.picker { margin-bottom: 16px; }
+.picker-label {
+  display: block;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.picker-hint { margin: 10px 2px 0; font-size: 13px; line-height: 1.45; color: var(--text-dim); }
+.segmented { display: flex; gap: 8px; flex-wrap: wrap; }
+.seg {
+  flex: 1 1 0;
+  min-width: 96px;
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-elev);
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.seg[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #16191d;
+}
+
+/* ---------- liste ---------- */
+.list { list-style: none; margin: 4px 0 0; padding: 0; }
+.list li { margin-bottom: 10px; }
+.list .day {
+  margin: 22px 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.list .day:first-child { margin-top: 6px; }
+.item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--bg-elev);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.item:active { background: var(--bg-elev-2); }
+.item-main { flex: 1; min-width: 0; }
+.item-name { font-family: var(--font-read); font-size: 20px; font-weight: 600; }
+.item-sub { margin-top: 4px; font-size: 13px; color: var(--text-dim); }
+.chip {
+  flex: none;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .3px;
+  font-variant-numeric: tabular-nums;
+}
+.chip.is-me { color: var(--text); border-color: var(--text-dim); }
+.item-arrow { color: var(--text-dim); font-size: 22px; }
+.empty { color: var(--text-dim); font-size: 15px; line-height: 1.5; padding: 24px 4px; }
+
+/* ---------- lesevisning ---------- */
+.read-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 20px 18px calc(20px + var(--safe-bottom));
+  font-family: var(--font-read);
+  font-size: var(--read-size);
+  line-height: 1.38;
+  font-weight: 400;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+.read-body p { margin: 0 0 .85em; }
+.read-body strong { font-weight: 700; color: var(--accent); }
+
+.line { margin: 0 0 .8em; }
+.line .who {
+  display: block;
+  margin-bottom: .1em;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.line.mine {
+  border-left: 4px solid var(--accent);
+  padding-left: .38em;
+}
+.line.mine .who { color: var(--accent); }
+.line.andre {
+  font-size: .5em;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+.read-body .plain { color: var(--text-dim); font-size: .7em; }
+.read-body .cue {
+  display: block;
+  margin: 0 0 .85em;
+  font-family: var(--font-ui);
+  font-size: .5em;
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: .2px;
+  color: var(--accent);
+  opacity: .95;
+}
+
+.readnav {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px calc(10px + var(--safe-bottom));
+  background: var(--bg-elev);
+  border-top: 1px solid var(--line);
+}
+.btn-nav { flex: 1; margin: 0; font-size: 16px; }
+.btn-nav:disabled { opacity: .35; }
+
+/* ---------- meny ---------- */
+.sheet { position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-end; }
+.sheet[hidden] { display: none; }
+.sheet-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.55); }
+.sheet-panel {
+  position: relative;
+  width: 100%;
+  padding: 8px 12px calc(12px + var(--safe-bottom));
+  background: var(--bg-elev);
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  border-top: 1px solid var(--line);
+}
+.sheet-item {
+  display: block;
+  width: 100%;
+  min-height: 54px;
+  margin-top: 8px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-elev-2);
+  color: var(--text);
+  font-size: 17px;
+  cursor: pointer;
+}
+.sheet-item.danger { color: var(--danger); }
+
+@media (min-width: 720px) {
+  .pad, .read-body, .readnav, .bar { max-width: 720px; margin-inline: auto; width: 100%; }
+}
+</style>
+
+<!-- ============ OPPSETT: bytt manus ============ -->
+<section id="view-setup" class="view" hidden>
+  <header class="bar">
+    <h1 class="bar-title">Manus</h1>
+    <button id="setup-back" class="bar-btn" aria-label="Tilbake">‹</button>
+  </header>
+
+  <div class="pad">
+    <p class="lead">Rediger teksten under, last opp et dokument, eller hent inn originalmanuset igjen.</p>
+
+    <textarea id="paste" rows="12" spellcheck="false"></textarea>
+    <button id="use-paste" class="btn btn-primary btn-block">Bruk denne teksten</button>
+
+    <label class="btn btn-ghost btn-block" for="file">
+      Last opp dokument (.txt, .md, .docx)
+      <input id="file" type="file" accept=".txt,.md,.markdown,.text,.docx" hidden>
+    </label>
+    <button id="use-builtin" class="btn btn-ghost btn-block">Hent inn originalmanuset</button>
+
+    <p id="setup-error" class="error" hidden></p>
+
+    <details class="help">
+      <summary>Slik er manuset bygd opp</summary>
+      <pre># FREDAG
+
+## Miriam (Karos venninne)
+Fredrik: Da er vi i gang med talene ...
+Anders: Og med ekstreme fordeler.
+(Spill video)</pre>
+      <p><code># DAG</code> lager en bolk, <code>## Navn</code> lager en post i listen.
+         Linjer som starter med <code>Anders:</code> eller <code>Fredrik:</code> blir replikker.
+         En linje i <code>(parentes)</code> eller <code>[hakeparentes]</code> blir en regibeskjed
+         du ikke skal si høyt. <code>**Uthevet**</code> tekst vises i uthevingsfargen.</p>
+    </details>
+  </div>
+</section>
+
+<!-- ============ LISTE ============ -->
+<section id="view-list" class="view" hidden>
+  <header class="bar">
+    <h1 class="bar-title">Toastmaster</h1>
+    <button id="menu-btn" class="bar-btn" aria-label="Meny">•••</button>
+  </header>
+
+  <div class="pad">
+    <div class="picker">
+      <span class="picker-label">Hvem er du?</span>
+      <div id="who" class="segmented" role="group" aria-label="Velg hvem du er"></div>
+      <p class="picker-hint">Dine replikker vises store og uthevet. Den andres står som stikkord.</p>
+    </div>
+
+    <ul id="list" class="list"></ul>
+    <p id="list-empty" class="empty" hidden>Fant ingen poster i manuset. Åpne menyen og sjekk teksten.</p>
+  </div>
+</section>
+
+<!-- ============ LESEVISNING ============ -->
+<section id="view-read" class="view" hidden>
+  <header class="bar bar-read">
+    <button id="back" class="bar-btn" aria-label="Tilbake til listen">‹</button>
+    <div class="bar-mid">
+      <div id="read-name" class="read-name"></div>
+      <div id="read-count" class="read-count"></div>
+    </div>
+    <div class="bar-right">
+      <button id="font-down" class="bar-btn" aria-label="Mindre tekst">A−</button>
+      <button id="font-up" class="bar-btn" aria-label="Større tekst">A+</button>
+    </div>
+  </header>
+
+  <article id="read-body" class="read-body"></article>
+
+  <nav class="readnav">
+    <button id="prev" class="btn btn-nav">‹ Forrige</button>
+    <button id="next" class="btn btn-nav">Neste ›</button>
+  </nav>
+</section>
+
+<!-- ============ MENY ============ -->
+<div id="sheet" class="sheet" hidden>
+  <div class="sheet-backdrop" data-close></div>
+  <div class="sheet-panel" role="dialog" aria-label="Meny">
+    <button id="m-edit" class="sheet-item">Rediger eller bytt manus</button>
+    <button id="m-theme" class="sheet-item">Bytt lyst / mørkt</button>
+    <button id="m-reset" class="sheet-item danger">Hent inn originalmanuset</button>
+    <button class="sheet-item" data-close>Lukk</button>
+  </div>
+</div>
+
+<script type="text/plain" id="innebygd-manus">
+# FREDAG
+
+## Velkomst
+Anders: Hjertelig velkommen til middag og velkommen til bords, alle sammen! For en utrolig fin gjeng å se samlet her i kveld. La os begynne med en skål!
+Fredrik: I helgen har vi lyst til å snu litt om på de klassiske bryllupsreglene. I stedet for at vi toastmastere bare ramser opp tørre fakta om kveldens talere, har vi sørget for å filme brudeparet selv – Karo og Peter – og da laget eksklusive introvideoer til alle som skal på talerstolen!
+Anders: Og her er den beste biten: Talerne her i dag (og i morgen) har ikke den fjerne anelse om hva brudeparet har sagt om dem bak deres rygger, eller at disse videoene i det hele tatt eksisterer før de plutselig dukker opp på storskjermen.
+Fredrik: Og til dere som ikke skal holde tale i kveld: Fortvil ikke! Dere slipper ikke unna. Dere skal selvfølgelig også få være med på moroa etter hvert – men detaljene om det sparer vi til i morgen.
+Anders: Alt dette gjør vi av én spesiell grunn: Alt vi har laget her blir som en unik, digital minnebok for Karo og Peter. Det blir et uforglemmelig tidsbilde fullt av taler, videoklipp, bilder og hemmeligheter som de skal få ta med seg videre og ta vare på for resten av livet.
+Fredrik: Så spenn fast setebeltet, fyll opp glassene og gjør dere klare for denne "rolige" fredagen.
+Anders: Kjenner jeg denne gjengen rett blir det alt annet enn rolig. Men igjen, velkommen, la oss kose oss og nyte og bli kjent. Igjen, skål og nå begynner det.
+
+## Miriam (Karos venninne)
+Fredrik: Da er vi i gang med talene, og vi skal starte med en av Karos absolutte favorittpersoner, verdens beste venninne og en dame med en ekstrem forretningsteft. Miriam!
+Anders: Og med ekstreme fordeler.
+Fredrik: og ekstreme …
+Anders: Nei, dette er absolutt et fyrverkeri av en dame. Det sies at de to havnet på nachspiel med Vinni på en festival for noen år siden, og siden har de hengt sammen.
+Fredrik: De støtter hverandre i tykt og tynt, og nå skal vi se hva brudeparet mener Miriam egentlig har å lære Karo. Snurr film!
+(Spill video)
+
+## Elisabeth (Peters tante)
+Anders: Turen har kommet til en dame som har et mildt sagt anstrengt forhold til både reglementer og autoriteter.
+Fredrik: Ja, Elisabeth er teknisk sett Peters tante, men i praksis fungerer hun mer som en opprørsk storesøster. Hun var for øvrig den eneste av samtlige talere som blankt nektet å forholde seg til fristen om å melde fra til oss toastmastere at hun skulle ha ordet.
+Anders: Et klassisk "et nei er bare et forslag"-menneske der altså! Men brudeparet beskriver henne også som bryllupets ubestridte livsnyter – en dame som har brukt livet sitt på å videreutvikle og perfeksjonere kunsten å kose seg.
+Fredrik: La oss se hvor dypt dette autoritetsproblemet hennes egentlig stikker. Snurr film!
+(Spill video)
+
+## Thomas Horntvedt
+Fredrik: Vi beveger oss raskt videre, og nå har turen kommet til Thomas, nærmere bestemt Thomas Horntvedt.
+Anders: Det stemmer! Er den han som ikke kan mail? Han som forsøkte å sende oss en mail, men ifølge han ble stoppet av han selv og ble liggende i utboksen…
+Fredrik: Helt klart. Det er jo helt utrolig av en voksen mann i 2026 og klare å ikke se at det ligger en mail i utboksen i flere uker!
+Anders: Ja, jeg tenker jo kanskje at det kan være snakk om en øyesykdom her jeg? Har vi en optiker i salen? Så kan vi kanskje ta en test med en gang..
+Fredrik: Øyesykdom, nei, det ligger nok et annet sted, om du drar litt nordover og litt innover så kanskje vi nærmer oss…
+[Musikkforslag: Luksus leverpostei – med en eller annen mongolåt]
+
+## Martin (Peters forlover)
+Anders: Turen har kommet til selveste forloveren til Peter – Martin! Byåsen-patrioten som har fulgt brudgommen i 14 år, helt siden de fant tonen over en kebabpizza på Hovefestivalen.
+Fredrik: De er så tette at Karo innrømmer at Martin til og med har overnattet på deres felles soverom ved et par anledninger.
+Anders: Gutteklubben deres er for øvrig sponsordrevet: kostholdet består utelukkende av biff, bearnaise, mye alkohol og mørke kveldstimer – godt hjulpet av at Martin har personalrabatt på Egon.
+Fredrik: Og til tross for saftige rykter om at han har satt uoffisielle rekorder på hotellganger i Texas, står han her i kveld som Peters ubestridte bror og forlover. La oss se hva brudeparet har å si!
+(Spill video)
+
+## Karo (bruden)
+Anders: Da har vi kommet til den soleklart viktigste karakteren for kvelden.
+Fredrik: Bruden selv, Karo! Vi har alle lurt på hvorfor Peter egentlig vil gifte seg med henne...
+Anders: Og det fikk vi noen ganske interessante, og kanskje litt interne svar på fra brudgommen selv. Vi snurrer kveldens siste videointro!
+(Spill video)
+
+# LØRDAG
+
+## Rolf (Karos far)
+Anders: Velkommen til lørdagens store festmiddag! Tradisjonen tro skal vi starte kveldens talerekke med selveste brudens far, Rolf.
+Fredrik: Rolf kalles populært for "Mr. Smiley", og er etter sigende en av de mest sosiale mennene i hele Nord-Norge. Å gå turen fra Villaveien og ned til byen i Narvik tar til vanlig 1 minutt og 40 sekunder... men med Rolf tar det minst tre kvarter, fordi han kjenner og må slå av en prat med absolutt alle på sin vei.
+Anders: Han er også mannen som ga Karo kjærligheten til jula – en lidenskap så sterk at han har klart å presse utrolige 644 antikke nisser inn i sin 64 kvadratmeter store stue. Det er altså ti nisser per kvadratmeter, folkens!
+Fredrik: Rolf har støttet Karo trofast gjennom både gode og dårlige valg her i livet. Men da Peter kom på banen, sendte han en hyllest på SMS om at dette var et utrolig godt valg.
+Anders: jeg er også fra Nord Norge så hadde tilfeldighetene vært litt annerledes ville det vært Peter som stod her og jeg som satt der (pek)… men men - La oss se hva brudeparet har å si om kveldens aller første taler. Snurr film!
+(Spill video)
+
+## Martin (Peters far)
+Anders: Neste taler ut er pappen til Peter, selveste Martin! En utrolig varm og fantastisk far.
+Fredrik: Og en mann med enormt mye kunnskap, som han veldig gjerne deler... ganske lenge. Det ryktes fra brudeparet at man fort kan risikere å falle ut etter sånn cirka 17 og et halvt minutt med ren livsvisdom.
+Anders: Det krever med andre ord sin kvinne å henge med. Da Karo skulle møte ham for første gang, var hun faktisk så nervøs at hun tømte en hel flaske vin før hun i det hele tatt møtte opp til nudel-middag.
+Fredrik: Det hjalp nok på nervene, men kanskje ikke på språkforståelsen. Kombinasjonen av jazz i bakgrunnen og en massiv trønderdialekt førte til at Karo kun forstod cirka 30 prosent av det som ble sagt.
+Anders: Men hun nikket og smilte seg gjennom dype samtaler om krig og fred! Han er dessuten en mann som lever strengt etter regelen om at man må yte før man kan slappe av, noe Peter fikk kjenne på da de nylig plantet hekk. La oss se hva brudeparet har å si!
+(Spill video)
+
+## Peter (brudgommen)
+Anders: Turen har kommet til brudgommen selv – Peter! Mannen som før han møtte Karo hadde hele livet sitt stramt organisert i et Excel-ark.
+Fredrik: Og det stopper ikke der. Karo falt nemlig pladask da hun så ham på festival, der Peter gikk rundt med samband i øret, 398 ubesvarte anrop på telefonen og et "Trippel A"-pass som fikk ham helt opp på scenen. Karo syntes den kontrollen var det absolutt mest sexy hun noen gang hadde sett!
+Anders: Veit du hva trippel A egentlig står for? Kan fortelle seinere.. Uansett - Karo innrømmer at Peter er en vanskelig mann å imponere, rett og slett fordi han allerede er så rå på alt.
+Fredrik: Men da Peter spurte henne om hvorfor han ville gifte seg med henne, tippet Karo først at det var fordi hun hadde gått ned igjen de 17,5 kiloene fra graviditeten... før de ble enige om at hun rett og slett bare er verdens kuleste og peneste dame.
+Anders: La oss se brudgommen i aksjon. Snurr film!
+(Spill video)
+
+## Silje (brudens forlover)
+Anders: Turen har kommet til en som står bruden ekstremt nær – nemlig Karos søster og forlover, Silje!
+Fredrik: Det har tydeligvis vært en intern diskusjon om hvem av søstrene som egentlig er den peneste, men Karo var utrolig kjapp med å dra frem bildebevis fra da Silje var 14 år... komplett med en meget tvilsom "half-cut"-frisyre.
+Anders: Men spøk til side – dette er to søstre med et helt spesielt bånd. Vi snakker om hemmelige morsekoder banket i sengegavlen mellom barnerommene om natten, mange fantastiske år som samboere i Oslo, og et eget SMS-språk som for utenforstående mest av alt ser ut som "Dyslexia Pro".
+Fredrik: La oss se hva brudeparet har å si om Karos uerstattelige lillesøster og forlover. Snurr film!
+
+## Henning (forlover)
+Anders: Turen har kommet til nok en viktig mann ved Peters side – nemlig hans forlover, Henning!
+Fredrik: Og for et fantastisk forbilde han er for brudgommen. En skikkelig bauta og familiemann som virkelig lever livet til det fulle i hvert eneste sekund.
+Anders: Men bak denne staselige og voksne fasaden skjuler det seg en kar med noen helt spesielle superkrefter... spesielt når det gjelder å parkere.
+Fredrik: Ja, Henning parkerer nøyaktig hvor han vil, når han vil. Han er visstnok innehaver av opptil fire nasjonale handicapbevis – eller sitt eget "internasjonale mongobevis" som brudeparet kaller det – så parkeringsvakter har ikke en sjanse.
+Anders: Heldigvis har han sin bedre halvdel, Fiona, som holder ham stramt i ørene og sørger for at han holder seg på matta. La oss se hva brudeparet har å si om kveldens forlover!
+(Spill video)
+
+## Véro (brudens forlover)
+Anders: Nå har turen kommet til en spesielt viktig dame her i kveld – nemlig brudens forlover, Véro! Og her har vi faktisk et aldri så lite habilitetsproblem oppe på toastmaster-pallen...
+Fredrik: Ja, Véro er nemlig min bedre halvdel og fantastiske kone!
+Anders: Véro og Karo har hengt sammen siden de var i starten av 20-årene, og har et så unikt og nært vennskap at de ifølge brudeparet er støpt i nøyaktig samme form. Véro sitter med andre ord på samtlige skjeletter i Karos klesskap.
+Fredrik: Og hun er en uerstattelig støttespiller. Da Karo var på fødestua og skulle få sitt første barn, var Véro så engasjert at hun like godt tok en to timers pause midt i sin egen fødsel – direkte fra et villmannsvorspiel i Hemsedal!
+Anders: Snakk om dedikert venninne og forlover! La oss se hva brudeparet har på hjertet om kona di, Fredrik. Snurr film!
+
+## Georg (Peters lillebror)
+Anders: Middagen nærmer seg slutten, og det er på tide med kveldens siste og mest kulinariske post på programmet: den tradisjonsrike "Takk for maten"-talen!
+Fredrik: Og den viktige oppgaven har falt på Peters veltalende lillebror og Karos svigerbror – Georg!
+Anders: Georg er en akademisk type av de sjeldne. Mens andre nøyer seg med én utdanning, tok Georg like godt to tunge grader i utlandet – én i Boston og én i Brasil.
+Fredrik: Han sjonglerer tysk, portugisisk og nynorsk på strak arm. Så spørsmålet her i kveld er om terningkastet på menyen kommer på tysk, portugisisk... eller som tørr pappahumor!
+Anders: Jeg utdannet meg også i Brasil faktisk - Brazzers hadde et forstudie i ex fuck som jeg fordypet meg i, men nok om det. For bak den internasjonale og velutdannede fasaden skjuler det seg nemlig en mann som har arvet faren sin forkjærlighet for tørre vitser. La oss se hva brudeparet har å si!
+(Spill video)
+</script>
+
+<script>
+/* Toastmaster – enkel lesevisning for et toastmaster-manus.
+   Manuset er delt i poster (én per taler som skal introduseres). Hver post
+   består av replikker merket med hvem som sier dem. Du velger hvem du er,
+   og dine replikker vises store og uthevet, mens den andres står som
+   stikkord slik at du vet når det er din tur. */
+
+'use strict';
+
+const KEY = { doc: 'tm.doc', me: 'tm.me', font: 'tm.font', theme: 'tm.theme' };
+const DEFAULT_PERSONS = ['Anders', 'Fredrik'];
+
+const state = {
+  intros: [],       // { name, section, lines: [{ type, who, text }] }
+  speakers: [],     // navn som opptrer som replikkmerker i manuset
+  me: null,
+  font: 30,
+  current: -1
+};
+
+const $ = (sel) => document.querySelector(sel);
+
+const store = {
+  get(k, fallback) {
+    try {
+      const v = localStorage.getItem(k);
+      return v === null ? fallback : v;
+    } catch (e) { return fallback; }
+  },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* privat modus */ } },
+  del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignorer */ } }
+};
+
+const same = (a, b) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/* ================= parsing ================= */
+
+const HASH_HEADING = /^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/;
+const BRACKET_HEADING = /^\s{0,3}\[(.+?)\]\s*$/;
+const LABELLED_HEADING = /^\s{0,3}(?:taler|speaker|navn|name)\s*[:\-–]\s*(.+?)\s*$/i;
+const BULLET = /^\s*[-*•]\s+/;
+const CUE_LINE = /^\s*[[(]([^[\]()]*)[\])]\s*$/;
+const SPEAKER_LINE = /^([\p{Lu}][\p{L}\p{M}.'\- ]{0,20}?)\s*:\s+(.+)$/u;
+
+/* [hakeparentes] er både overskrift og regibeskjed. Bruker manuset
+   #-overskrifter, er hakeparentes alltid regibeskjed. */
+function looksLikeName(text) {
+  const t = text.trim();
+  return t.length > 0 && t.length <= 60 &&
+    t.split(/\s+/).length <= 4 &&
+    !/[.!?:]/.test(t) &&
+    t[0] === t[0].toLocaleUpperCase('no');
+}
+
+function parseDocument(text) {
+  const clean = String(text).replace(/^﻿/, '').replace(/\r\n?/g, '\n');
+  const lines = clean.split('\n').map((l) => l.replace(BULLET, ''));
+
+  const levels = new Set();
+  lines.forEach((l) => { const m = HASH_HEADING.exec(l); if (m) levels.add(m[1].length); });
+  const sorted = [...levels].sort();
+  const sectionLevel = sorted.length > 1 ? sorted[0] : null;   // «# FREDAG» over «## Taler»
+  const allowBrackets = levels.size === 0;
+
+  const intros = [];
+  let section = null;
+  let current = null;
+
+  for (const line of lines) {
+    let name = null;
+    let level = null;
+
+    const hash = HASH_HEADING.exec(line);
+    const labelled = hash ? null : LABELLED_HEADING.exec(line);
+    const bracket = hash || labelled || !allowBrackets ? null : BRACKET_HEADING.exec(line);
+
+    if (hash) { level = hash[1].length; name = hash[2].trim(); }
+    else if (labelled) { level = 2; name = labelled[1].trim(); }
+    else if (bracket && looksLikeName(bracket[1])) { level = 2; name = bracket[1].trim(); }
+
+    if (name !== null) {
+      if (sectionLevel !== null && level === sectionLevel) { section = name; continue; }
+      current = { name: name.replace(/^\d+[.)]\s*/, ''), section, raw: [] };
+      intros.push(current);
+      continue;
+    }
+    if (current) current.raw.push(line);
+  }
+
+  if (!intros.length) {
+    // Ingen overskrifter: hvert avsnitt er én post, første linje er navnet.
+    clean.split(/\n\s*\n+/).map((b) => b.trim()).filter(Boolean).forEach((block) => {
+      const blockLines = block.split('\n');
+      intros.push({ name: blockLines.shift().trim(), section: null, raw: blockLines });
+    });
+  }
+
+  const speakers = findSpeakers(intros);
+  intros.forEach((intro) => {
+    intro.lines = toLines(intro.raw, speakers);
+    delete intro.raw;
+  });
+
+  return {
+    intros: intros.filter((i) => i.name),
+    speakers: speakers.length ? speakers : DEFAULT_PERSONS.slice()
+  };
+}
+
+/* Et navn foran kolon regnes som replikkmerke først når det går igjen i
+   manuset – slik at enkeltlinjer som «Musikkforslag:» blir vanlig tekst. */
+function findSpeakers(intros) {
+  const counts = new Map();
+  intros.forEach((intro) => intro.raw.forEach((line) => {
+    if (CUE_LINE.test(line)) return;
+    const m = SPEAKER_LINE.exec(line.trim());
+    if (!m) return;
+    const name = m[1].trim();
+    const key = name.toLowerCase();
+    const hit = counts.get(key) || { name, n: 0 };
+    hit.n += 1;
+    counts.set(key, hit);
+  }));
+  return [...counts.values()].filter((c) => c.n >= 3).map((c) => c.name);
+}
+
+function toLines(raw, speakers) {
+  const isSpeaker = (n) => speakers.some((s) => same(s, n));
+  const canonical = (n) => speakers.find((s) => same(s, n)) || n;
+
+  const lines = raw.map((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return { type: 'blank' };
+    if (CUE_LINE.test(trimmed)) return { type: 'cue', text: trimmed.replace(/^[[(]|[\])]$/g, '').trim() };
+    const m = SPEAKER_LINE.exec(trimmed);
+    if (m && isSpeaker(m[1])) return { type: 'say', who: canonical(m[1].trim()), text: m[2].trim() };
+    return { type: 'text', text: trimmed };
+  });
+
+  while (lines.length && lines[0].type === 'blank') lines.shift();
+  while (lines.length && lines[lines.length - 1].type === 'blank') lines.pop();
+  return lines;
+}
+
+/* ================= .docx ================= */
+
+function findEOCD(view) {
+  for (let i = view.byteLength - 22; i >= 0; i--) {
+    if (view.getUint32(i, true) === 0x06054b50) return i;
+  }
+  return -1;
+}
+
+async function inflateRaw(bytes) {
+  if (typeof DecompressionStream !== 'function') {
+    throw new Error('Nettleseren kan ikke pakke ut .docx. Lagre dokumentet som .txt og prøv igjen.');
+  }
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function readZipEntry(buffer, wanted) {
+  const view = new DataView(buffer);
+  const eocd = findEOCD(view);
+  if (eocd < 0) throw new Error('Klarte ikke lese .docx-filen.');
+
+  let offset = view.getUint32(eocd + 16, true);
+  const count = view.getUint16(eocd + 10, true);
+
+  for (let i = 0; i < count; i++) {
+    if (view.getUint32(offset, true) !== 0x02014b50) break;
+    const method = view.getUint16(offset + 10, true);
+    const compressedSize = view.getUint32(offset + 20, true);
+    const nameLen = view.getUint16(offset + 28, true);
+    const extraLen = view.getUint16(offset + 30, true);
+    const commentLen = view.getUint16(offset + 32, true);
+    const localOffset = view.getUint32(offset + 42, true);
+    const name = new TextDecoder().decode(new Uint8Array(buffer, offset + 46, nameLen));
+
+    if (name === wanted) {
+      const lNameLen = view.getUint16(localOffset + 26, true);
+      const lExtraLen = view.getUint16(localOffset + 28, true);
+      const start = localOffset + 30 + lNameLen + lExtraLen;
+      const data = new Uint8Array(buffer, start, compressedSize);
+      return method === 0 ? data : inflateRaw(data);
+    }
+    offset += 46 + nameLen + extraLen + commentLen;
+  }
+  throw new Error('Fant ikke tekst i .docx-filen.');
+}
+
+function docxXmlToText(xml) {
+  return xml
+    .replace(/<w:tab\b[^>]*\/>/g, '\t')
+    .replace(/<w:br\b[^>]*\/>/g, '\n')
+    .replace(/<\/w:p>/g, '\n')
+    .replace(/<w:t\b[^>]*>([\s\S]*?)<\/w:t>/g, '$1')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/\n{3,}/g, '\n\n');
+}
+
+async function readFileAsText(file) {
+  if (/\.docx$/i.test(file.name)) {
+    const bytes = await readZipEntry(await file.arrayBuffer(), 'word/document.xml');
+    return docxXmlToText(new TextDecoder().decode(bytes));
+  }
+  return file.text();
+}
+
+/* ================= visning ================= */
+
+function showView(id) {
+  ['#view-setup', '#view-list', '#view-read'].forEach((sel) => { $(sel).hidden = sel !== id; });
+  window.scrollTo(0, 0);
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+const inline = (html) => html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+function myLineCount(intro) {
+  if (!state.me) return 0;
+  return intro.lines.filter((l) => l.type === 'say' && same(l.who, state.me)).length;
+}
+
+function renderRead(intro) {
+  const out = [];
+  let paragraph = [];
+  const flush = () => {
+    if (paragraph.length) { out.push(`<p class="plain">${inline(escapeHtml(paragraph.join(' ')))}</p>`); paragraph = []; }
+  };
+
+  intro.lines.forEach((line) => {
+    if (line.type === 'text') { paragraph.push(line.text); return; }
+    flush();
+    if (line.type === 'blank') return;
+    if (line.type === 'cue') {
+      out.push(`<p class="cue">${inline(escapeHtml(line.text))}</p>`);
+      return;
+    }
+    const mine = state.me ? (same(line.who, state.me) ? 'mine' : 'andre') : 'noyral';
+    out.push(
+      `<div class="line ${mine}"><span class="who">${escapeHtml(line.who)}</span>` +
+      `<span class="say">${inline(escapeHtml(line.text))}</span></div>`
+    );
+  });
+  flush();
+
+  return out.join('') || '<p class="cue">Ingen tekst under denne posten</p>';
+}
+
+function renderPersons() {
+  const wrap = $('#who');
+  wrap.innerHTML = '';
+  state.speakers.forEach((p) => {
+    const b = document.createElement('button');
+    b.className = 'seg';
+    b.textContent = p;
+    b.setAttribute('aria-pressed', String(same(p, state.me)));
+    b.addEventListener('click', () => {
+      state.me = same(p, state.me) ? null : p;
+      if (state.me) store.set(KEY.me, state.me); else store.del(KEY.me);
+      renderList();
+    });
+    wrap.appendChild(b);
+  });
+}
+
+function renderList() {
+  renderPersons();
+
+  const list = $('#list');
+  list.innerHTML = '';
+  let section = null;
+
+  state.intros.forEach((intro, i) => {
+    if (intro.section && intro.section !== section) {
+      section = intro.section;
+      const head = document.createElement('li');
+      head.className = 'day';
+      head.textContent = section;
+      list.appendChild(head);
+    }
+
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.className = 'item';
+    btn.innerHTML = `
+      <div class="item-main">
+        <div class="item-name"></div>
+        <div class="item-sub"></div>
+      </div>
+      <span class="chip"></span>
+      <span class="item-arrow" aria-hidden="true">›</span>`;
+    btn.querySelector('.item-name').textContent = intro.name;
+
+    const first = intro.lines.find((l) => l.type === 'say' || l.type === 'text');
+    btn.querySelector('.item-sub').textContent = first ? firstWords(first.text) : '';
+
+    const chip = btn.querySelector('.chip');
+    const mine = myLineCount(intro);
+    if (state.me) {
+      chip.textContent = mine ? `${mine} replikk${mine === 1 ? '' : 'er'}` : 'ingen replikker';
+      if (mine) chip.classList.add('is-me');
+    } else {
+      chip.hidden = true;
+    }
+
+    btn.addEventListener('click', () => openIntro(i));
+    li.appendChild(btn);
+    list.appendChild(li);
+  });
+
+  $('#list-empty').hidden = state.intros.length > 0;
+}
+
+function firstWords(text) {
+  const flat = text.replace(/\s+/g, ' ').trim();
+  return flat.length > 64 ? flat.slice(0, 64) + '…' : flat;
+}
+
+function openIntro(index) {
+  const intro = state.intros[index];
+  if (!intro) return;
+  state.current = index;
+
+  $('#read-name').textContent = intro.name;
+  $('#read-count').textContent =
+    `${intro.section ? intro.section.toLowerCase() + ' · ' : ''}${index + 1} av ${state.intros.length}`;
+  $('#read-body').innerHTML = renderRead(intro);
+  $('#read-body').scrollTop = 0;
+
+  $('#prev').disabled = index === 0;
+  $('#next').disabled = index === state.intros.length - 1;
+
+  showView('#view-read');
+  requestWakeLock();
+}
+
+function step(delta) {
+  const target = state.current + delta;
+  if (target >= 0 && target < state.intros.length) openIntro(target);
+}
+
+function setFont(px) {
+  state.font = Math.min(72, Math.max(18, px));
+  document.documentElement.style.setProperty('--read-size', state.font + 'px');
+  store.set(KEY.font, String(state.font));
+}
+
+/* ================= skjermlås ================= */
+
+let wakeLock = null;
+
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock = null; });
+  } catch (e) { /* nettleseren nekter – ikke kritisk */ }
+}
+
+function releaseWakeLock() {
+  if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && !$('#view-read').hidden) requestWakeLock();
+});
+
+/* ================= manus inn ================= */
+
+function showError(msg) {
+  const el = $('#setup-error');
+  el.textContent = msg;
+  el.hidden = !msg;
+}
+
+function loadText(text, { remember = true } = {}) {
+  const parsed = parseDocument(text);
+  if (!parsed.intros.length) {
+    showError('Fant ingen poster i teksten. Legg inn en overskrift per taler, for eksempel «## Miriam».');
+    return false;
+  }
+  state.intros = parsed.intros;
+  state.speakers = parsed.speakers;
+  if (state.me && !state.speakers.some((s) => same(s, state.me))) state.me = null;
+  state.current = -1;
+  if (remember) store.set(KEY.doc, text);
+  showError('');
+  renderList();
+  showView('#view-list');
+  return true;
+}
+
+const builtInScript = () => {
+  const el = document.getElementById('innebygd-manus');
+  return el ? el.textContent.trim() : '';
+};
+
+/* ================= oppstart ================= */
+
+function initEvents() {
+  $('#file').addEventListener('change', async (ev) => {
+    const file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    try {
+      loadText(await readFileAsText(file));
+    } catch (e) {
+      showError(e.message || 'Klarte ikke lese filen.');
+    } finally {
+      ev.target.value = '';
+    }
+  });
+
+  $('#use-paste').addEventListener('click', () => {
+    const text = $('#paste').value;
+    if (!text.trim()) { showError('Lim inn tekst først.'); return; }
+    loadText(text);
+  });
+
+  $('#use-builtin').addEventListener('click', () => {
+    const text = builtInScript();
+    if (!text) { showError('Fant ikke det innebygde manuset.'); return; }
+    $('#paste').value = text;
+    loadText(text);
+  });
+
+  $('#setup-back').addEventListener('click', () => {
+    if (!state.intros.length) { showError('Legg inn et manus først.'); return; }
+    showError('');
+    showView('#view-list');
+  });
+
+  $('#back').addEventListener('click', () => {
+    releaseWakeLock();
+    renderList();
+    showView('#view-list');
+  });
+  $('#prev').addEventListener('click', () => step(-1));
+  $('#next').addEventListener('click', () => step(1));
+  $('#font-up').addEventListener('click', () => setFont(state.font + 3));
+  $('#font-down').addEventListener('click', () => setFont(state.font - 3));
+
+  // Sveip mellom poster
+  const body = $('#read-body');
+  let startX = 0, startY = 0, tracking = false;
+  body.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) { tracking = false; return; }
+    tracking = true;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+  body.addEventListener('touchend', (e) => {
+    if (!tracking) return;
+    tracking = false;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+    if (Math.abs(dx) > 70 && Math.abs(dy) < 60) step(dx < 0 ? 1 : -1);
+  }, { passive: true });
+
+  document.addEventListener('keydown', (e) => {
+    if ($('#view-read').hidden) return;
+    if (e.key === 'ArrowRight') step(1);
+    if (e.key === 'ArrowLeft') step(-1);
+    if (e.key === 'Escape') { releaseWakeLock(); showView('#view-list'); }
+  });
+
+  // Meny
+  const sheet = $('#sheet');
+  const closeSheet = () => { sheet.hidden = true; };
+  $('#menu-btn').addEventListener('click', () => { sheet.hidden = false; });
+  sheet.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closeSheet));
+
+  $('#m-edit').addEventListener('click', () => {
+    closeSheet();
+    $('#paste').value = store.get(KEY.doc, '') || builtInScript();
+    showError('');
+    showView('#view-setup');
+  });
+  $('#m-theme').addEventListener('click', () => {
+    closeSheet();
+    const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = next;
+    store.set(KEY.theme, next);
+  });
+  $('#m-reset').addEventListener('click', () => {
+    closeSheet();
+    const text = builtInScript();
+    if (!text) return;
+    if (!confirm('Hente inn originalmanuset og forkaste endringene dine?')) return;
+    store.del(KEY.doc);
+    $('#paste').value = text;
+    loadText(text, { remember: false });
+  });
+}
+
+function init() {
+  document.documentElement.dataset.theme = store.get(KEY.theme, 'dark');
+  state.me = store.get(KEY.me, null);
+  setFont(parseInt(store.get(KEY.font, '30'), 10) || 30);
+
+  initEvents();
+
+  const saved = store.get(KEY.doc, '');
+  if (saved && saved.trim() && loadText(saved, { remember: false })) return;
+
+  const builtIn = builtInScript();
+  if (builtIn && loadText(builtIn, { remember: false })) return;
+
+  showView('#view-setup');
+}
+
+init();
+
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+}
+</script>

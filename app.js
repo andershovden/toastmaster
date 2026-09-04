@@ -1,26 +1,20 @@
-/* Toastmaster – enkel lesevisning for introduksjoner.
-   Alt kjører i nettleseren; teksten lagres kun lokalt på telefonen. */
+/* Toastmaster – enkel lesevisning for et toastmaster-manus.
+   Manuset er delt i poster (én per taler som skal introduseres). Hver post
+   består av replikker merket med hvem som sier dem. Du velger hvem du er,
+   og dine replikker vises store og uthevet, mens den andres står som
+   stikkord slik at du vet når det er din tur. */
 
 'use strict';
 
-const KEY = {
-  doc: 'tm.doc',
-  me: 'tm.me',
-  font: 'tm.font',
-  filter: 'tm.filter',
-  overrides: 'tm.overrides',
-  theme: 'tm.theme'
-};
-
+const KEY = { doc: 'tm.doc', me: 'tm.me', font: 'tm.font', theme: 'tm.theme' };
 const DEFAULT_PERSONS = ['Anders', 'Fredrik'];
 
 const state = {
-  intros: [],      // { name, reader, body }
-  overrides: {},   // navn -> leser valgt i appen
+  intros: [],       // { name, section, lines: [{ type, who, text }] }
+  speakers: [],     // navn som opptrer som replikkmerker i manuset
   me: null,
-  filter: 'mine',
-  font: 34,
-  current: -1      // indeks i state.intros
+  font: 30,
+  current: -1
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -36,101 +30,115 @@ const store = {
   del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignorer */ } }
 };
 
+const same = (a, b) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
+
 /* ================= parsing ================= */
 
-const HASH_HEADING = /^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$/;            // # Navn
-const BRACKET_HEADING = /^\s{0,3}\[(.+?)\]\s*$/;                    // [Navn]
+const HASH_HEADING = /^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/;
+const BRACKET_HEADING = /^\s{0,3}\[(.+?)\]\s*$/;
 const LABELLED_HEADING = /^\s{0,3}(?:taler|speaker|navn|name)\s*[:\-–]\s*(.+?)\s*$/i;
+const BULLET = /^\s*[-*•]\s+/;
+const CUE_LINE = /^\s*[[(]([^[\]()]*)[\])]\s*$/;
+const SPEAKER_LINE = /^([\p{Lu}][\p{L}\p{M}.'\- ]{0,20}?)\s*:\s+(.+)$/u;
 
-const READER_LINE = /^\s*(?:leses\s+av|lest\s+av|leser|toastmaster|intro(?:duseres)?\s+av|ansvarlig|reader|av)\s*[:\-–]\s*(.+?)\s*$/i;
-
-/* "Ola Nordmann (Anders)", "Ola Nordmann - Anders", "Ola Nordmann | Anders".
-   Bindestrek krever mellomrom rundt seg, slik at "Anne-Lise" ikke splittes. */
-const NAME_WITH_READER = /^(.*?)(?:\s*\(([^()]+)\)|\s+[|/]\s*([^|/]+)|\s+[–—-]\s+(.+))\s*$/;
-
-function splitNameAndReader(heading) {
-  const m = NAME_WITH_READER.exec(heading);
-  if (!m) return { name: heading.trim(), reader: null };
-  const candidate = (m[2] || m[3] || m[4] || '').trim();
-  // Bare tolk det som leser hvis det ser ut som ett navn (1–2 ord).
-  if (!candidate || candidate.split(/\s+/).length > 2) {
-    return { name: heading.trim(), reader: null };
-  }
-  return { name: (m[1] || '').trim() || heading.trim(), reader: candidate };
-}
-
-/* [hakeparentes] brukes både til overskrifter og til regibeskjeder som
-   "[vent på applaus]". Bruker dokumentet #-overskrifter, er hakeparentes
-   alltid en regibeskjed. Ellers godtas den bare når den ser ut som et navn. */
+/* [hakeparentes] er både overskrift og regibeskjed. Bruker manuset
+   #-overskrifter, er hakeparentes alltid regibeskjed. */
 function looksLikeName(text) {
   const t = text.trim();
   return t.length > 0 && t.length <= 60 &&
     t.split(/\s+/).length <= 4 &&
-    !/[.!?:]$/.test(t) &&
+    !/[.!?:]/.test(t) &&
     t[0] === t[0].toLocaleUpperCase('no');
-}
-
-function matchHeading(line, allowBrackets) {
-  let m = HASH_HEADING.exec(line);
-  if (m) return m[1].trim();
-  m = LABELLED_HEADING.exec(line);
-  if (m) return m[1].trim();
-  if (allowBrackets) {
-    m = BRACKET_HEADING.exec(line);
-    if (m && looksLikeName(m[1])) return m[1].trim();
-  }
-  return null;
-}
-
-function finishBlock(name, reader, lines) {
-  const body = lines.join('\n').replace(/^\n+|\s+$/g, '');
-  return { name: name.trim(), reader: reader ? reader.trim() : null, body };
 }
 
 function parseDocument(text) {
   const clean = String(text).replace(/^﻿/, '').replace(/\r\n?/g, '\n');
-  const lines = clean.split('\n');
-  const allowBrackets = !lines.some((l) => HASH_HEADING.test(l));
+  const lines = clean.split('\n').map((l) => l.replace(BULLET, ''));
+
+  const levels = new Set();
+  lines.forEach((l) => { const m = HASH_HEADING.exec(l); if (m) levels.add(m[1].length); });
+  const sorted = [...levels].sort();
+  const sectionLevel = sorted.length > 1 ? sorted[0] : null;   // «# FREDAG» over «## Taler»
+  const allowBrackets = levels.size === 0;
 
   const intros = [];
-  let name = null;
-  let reader = null;
-  let buffer = [];
+  let section = null;
+  let current = null;
 
   for (const line of lines) {
-    const heading = matchHeading(line, allowBrackets);
-    if (heading !== null) {
-      if (name !== null) intros.push(finishBlock(name, reader, buffer));
-      const split = splitNameAndReader(heading);
-      name = split.name;
-      reader = split.reader;
-      buffer = [];
+    let name = null;
+    let level = null;
+
+    const hash = HASH_HEADING.exec(line);
+    const labelled = hash ? null : LABELLED_HEADING.exec(line);
+    const bracket = hash || labelled || !allowBrackets ? null : BRACKET_HEADING.exec(line);
+
+    if (hash) { level = hash[1].length; name = hash[2].trim(); }
+    else if (labelled) { level = 2; name = labelled[1].trim(); }
+    else if (bracket && looksLikeName(bracket[1])) { level = 2; name = bracket[1].trim(); }
+
+    if (name !== null) {
+      if (sectionLevel !== null && level === sectionLevel) { section = name; continue; }
+      current = { name: name.replace(/^\d+[.)]\s*/, ''), section, raw: [] };
+      intros.push(current);
       continue;
     }
-    if (name !== null && !buffer.some((l) => l.trim())) {
-      const rm = READER_LINE.exec(line);
-      if (rm) { if (!reader) reader = rm[1]; continue; }
-    }
-    if (name !== null) buffer.push(line);
+    if (current) current.raw.push(line);
   }
-  if (name !== null) intros.push(finishBlock(name, reader, buffer));
 
-  if (intros.length) return intros.filter((i) => i.name);
-
-  // Ingen overskrifter: tolk avsnitt der første linje er navnet.
-  return clean
-    .split(/\n\s*\n\s*\n+|\n\s*\n(?=\S)/)
-    .map((block) => block.trim())
-    .filter(Boolean)
-    .map((block) => {
+  if (!intros.length) {
+    // Ingen overskrifter: hvert avsnitt er én post, første linje er navnet.
+    clean.split(/\n\s*\n+/).map((b) => b.trim()).filter(Boolean).forEach((block) => {
       const blockLines = block.split('\n');
-      const split = splitNameAndReader(blockLines.shift());
-      let rest = blockLines;
-      const rm = rest.length ? READER_LINE.exec(rest[0]) : null;
-      if (rm) { if (!split.reader) split.reader = rm[1]; rest = rest.slice(1); }
-      return finishBlock(split.name, split.reader, rest);
-    })
-    .filter((i) => i.name);
+      intros.push({ name: blockLines.shift().trim(), section: null, raw: blockLines });
+    });
+  }
+
+  const speakers = findSpeakers(intros);
+  intros.forEach((intro) => {
+    intro.lines = toLines(intro.raw, speakers);
+    delete intro.raw;
+  });
+
+  return {
+    intros: intros.filter((i) => i.name),
+    speakers: speakers.length ? speakers : DEFAULT_PERSONS.slice()
+  };
+}
+
+/* Et navn foran kolon regnes som replikkmerke først når det går igjen i
+   manuset – slik at enkeltlinjer som «Musikkforslag:» blir vanlig tekst. */
+function findSpeakers(intros) {
+  const counts = new Map();
+  intros.forEach((intro) => intro.raw.forEach((line) => {
+    if (CUE_LINE.test(line)) return;
+    const m = SPEAKER_LINE.exec(line.trim());
+    if (!m) return;
+    const name = m[1].trim();
+    const key = name.toLowerCase();
+    const hit = counts.get(key) || { name, n: 0 };
+    hit.n += 1;
+    counts.set(key, hit);
+  }));
+  return [...counts.values()].filter((c) => c.n >= 3).map((c) => c.name);
+}
+
+function toLines(raw, speakers) {
+  const isSpeaker = (n) => speakers.some((s) => same(s, n));
+  const canonical = (n) => speakers.find((s) => same(s, n)) || n;
+
+  const lines = raw.map((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return { type: 'blank' };
+    if (CUE_LINE.test(trimmed)) return { type: 'cue', text: trimmed.replace(/^[[(]|[\])]$/g, '').trim() };
+    const m = SPEAKER_LINE.exec(trimmed);
+    if (m && isSpeaker(m[1])) return { type: 'say', who: canonical(m[1].trim()), text: m[2].trim() };
+    return { type: 'text', text: trimmed };
+  });
+
+  while (lines.length && lines[0].type === 'blank') lines.shift();
+  while (lines.length && lines[lines.length - 1].type === 'blank') lines.pop();
+  return lines;
 }
 
 /* ================= .docx ================= */
@@ -203,48 +211,10 @@ async function readFileAsText(file) {
   return file.text();
 }
 
-/* ================= personer og filtrering ================= */
-
-function readerOf(intro) {
-  return state.overrides[intro.name] || intro.reader || null;
-}
-
-function samePerson(a, b) {
-  if (!a || !b) return false;
-  return a.trim().toLowerCase() === b.trim().toLowerCase();
-}
-
-function persons() {
-  const found = [];
-  const seen = new Set();
-  const add = (n) => {
-    if (!n) return;
-    const key = n.trim().toLowerCase();
-    if (!key || seen.has(key)) return;
-    seen.add(key);
-    found.push(n.trim());
-  };
-  DEFAULT_PERSONS.forEach(add);
-  state.intros.forEach((i) => add(readerOf(i)));
-  Object.values(state.overrides).forEach(add);
-  return found;
-}
-
-function visibleIndexes() {
-  return state.intros
-    .map((intro, i) => i)
-    .filter((i) => {
-      if (state.filter === 'alle' || !state.me) return true;
-      return samePerson(readerOf(state.intros[i]), state.me);
-    });
-}
-
 /* ================= visning ================= */
 
 function showView(id) {
-  ['#view-setup', '#view-list', '#view-read'].forEach((sel) => {
-    $(sel).hidden = sel !== id;
-  });
+  ['#view-setup', '#view-list', '#view-read'].forEach((sel) => { $(sel).hidden = sel !== id; });
   window.scrollTo(0, 0);
 }
 
@@ -252,107 +222,73 @@ function escapeHtml(s) {
   return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 
-const CUE_LINE = /^\[[^\[\]]*\]$/;
-const LIST_LINE = /^(?:[-*•–—]\s|\d+[.)]\s)/;
+const inline = (html) => html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 
-function inline(html) {
-  return html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+function myLineCount(intro) {
+  if (!state.me) return 0;
+  return intro.lines.filter((l) => l.type === 'say' && same(l.who, state.me)).length;
 }
 
-/* Tekstfiler har ofte harde linjeskift midt i setninger. Vi lar teksten flyte
-   på nytt så den fyller mobilskjermen, men beholder skiftet der det ser bevisst
-   ut: linje som slutter med to mellomrom eller \\, og lister. */
-function renderParagraph(lines) {
-  let html = '';
-  lines.forEach((raw, i) => {
-    const line = raw.trim();
-    if (i > 0) {
-      const prev = lines[i - 1];
-      const forced = /(?:\s{2}|\\)$/.test(prev) || LIST_LINE.test(line);
-      html += forced ? '<br>' : ' ';
-    }
-    html += escapeHtml(line);
-  });
-  return `<p>${inline(html)}</p>`;
-}
-
-function renderBody(text) {
-  if (!text.trim()) return '<span class="cue">[ingen tekst under denne overskriften]</span>';
-
+function renderRead(intro) {
   const out = [];
-  text.split(/\n\s*\n/).forEach((block) => {
-    let buffer = [];
-    const flush = () => {
-      if (buffer.length) { out.push(renderParagraph(buffer)); buffer = []; }
-    };
-    block.split('\n').forEach((line) => {
-      if (!line.trim()) return;
-      if (CUE_LINE.test(line.trim())) {
-        flush();
-        out.push(`<span class="cue">${inline(escapeHtml(line.trim()))}</span>`);
-      } else {
-        buffer.push(line);
-      }
-    });
-    flush();
-  });
+  let paragraph = [];
+  const flush = () => {
+    if (paragraph.length) { out.push(`<p class="plain">${inline(escapeHtml(paragraph.join(' ')))}</p>`); paragraph = []; }
+  };
 
-  return out.join('') || '<span class="cue">[ingen tekst under denne overskriften]</span>';
+  intro.lines.forEach((line) => {
+    if (line.type === 'text') { paragraph.push(line.text); return; }
+    flush();
+    if (line.type === 'blank') return;
+    if (line.type === 'cue') {
+      out.push(`<p class="cue">${inline(escapeHtml(line.text))}</p>`);
+      return;
+    }
+    const mine = state.me ? (same(line.who, state.me) ? 'mine' : 'andre') : 'noyral';
+    out.push(
+      `<div class="line ${mine}"><span class="who">${escapeHtml(line.who)}</span>` +
+      `<span class="say">${inline(escapeHtml(line.text))}</span></div>`
+    );
+  });
+  flush();
+
+  return out.join('') || '<p class="cue">Ingen tekst under denne posten</p>';
 }
 
 function renderPersons() {
   const wrap = $('#who');
   wrap.innerHTML = '';
-  persons().forEach((p) => {
+  state.speakers.forEach((p) => {
     const b = document.createElement('button');
     b.className = 'seg';
     b.textContent = p;
-    b.setAttribute('aria-pressed', String(samePerson(p, state.me)));
+    b.setAttribute('aria-pressed', String(same(p, state.me)));
     b.addEventListener('click', () => {
-      state.me = samePerson(p, state.me) ? null : p;
-      if (state.me) {
-        store.set(KEY.me, state.me);
-        state.filter = 'mine';      // velger du deg selv, vil du normalt se dine egne
-        store.set(KEY.filter, state.filter);
-      } else {
-        store.del(KEY.me);
-      }
+      state.me = same(p, state.me) ? null : p;
+      if (state.me) store.set(KEY.me, state.me); else store.del(KEY.me);
       renderList();
     });
     wrap.appendChild(b);
   });
 }
 
-function renderFilter() {
-  document.querySelectorAll('[data-filter]').forEach((b) => {
-    b.setAttribute('aria-pressed', String(b.dataset.filter === state.filter));
-  });
-}
-
 function renderList() {
   renderPersons();
-  renderFilter();
 
   const list = $('#list');
-  const empty = $('#list-empty');
   list.innerHTML = '';
+  let section = null;
 
-  const indexes = visibleIndexes();
+  state.intros.forEach((intro, i) => {
+    if (intro.section && intro.section !== section) {
+      section = intro.section;
+      const head = document.createElement('li');
+      head.className = 'day';
+      head.textContent = section;
+      list.appendChild(head);
+    }
 
-  if (!indexes.length) {
-    empty.hidden = false;
-    empty.textContent = state.intros.length
-      ? `Ingen introduksjoner er merket med ${state.me}. Velg «Alle», eller trykk på merkelappen til høyre i listen for å sette leser.`
-      : 'Fant ingen introduksjoner i teksten. Sjekk formatet under «Rediger / bytt tekst».';
-    return;
-  }
-  empty.hidden = true;
-
-  indexes.forEach((i, n) => {
-    const intro = state.intros[i];
-    const reader = readerOf(intro);
     const li = document.createElement('li');
-
     const btn = document.createElement('button');
     btn.className = 'item';
     btn.innerHTML = `
@@ -362,63 +298,54 @@ function renderList() {
       </div>
       <span class="chip"></span>
       <span class="item-arrow" aria-hidden="true">›</span>`;
-    btn.querySelector('.item-name').textContent = `${n + 1}. ${intro.name}`;
-    btn.querySelector('.item-sub').textContent = firstWords(intro.body);
-    btn.addEventListener('click', () => openIntro(i));
+    btn.querySelector('.item-name').textContent = intro.name;
+
+    const first = intro.lines.find((l) => l.type === 'say' || l.type === 'text');
+    btn.querySelector('.item-sub').textContent = first ? firstWords(first.text) : '';
 
     const chip = btn.querySelector('.chip');
-    chip.textContent = reader || 'Sett leser';
-    if (samePerson(reader, state.me)) chip.classList.add('is-me');
-    chip.setAttribute('role', 'button');
-    chip.setAttribute('tabindex', '0');
-    chip.title = 'Trykk for å bytte hvem som leser';
-    const cycle = (ev) => {
-      ev.stopPropagation();
-      ev.preventDefault();
-      const options = persons();
-      const idx = options.findIndex((p) => samePerson(p, reader));
-      const next = options[(idx + 1) % options.length];
-      state.overrides[intro.name] = next;
-      store.set(KEY.overrides, JSON.stringify(state.overrides));
-      renderList();
-    };
-    chip.addEventListener('click', cycle);
-    chip.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') cycle(ev); });
+    const mine = myLineCount(intro);
+    if (state.me) {
+      chip.textContent = mine ? `${mine} replikk${mine === 1 ? '' : 'er'}` : 'ingen replikker';
+      if (mine) chip.classList.add('is-me');
+    } else {
+      chip.hidden = true;
+    }
 
+    btn.addEventListener('click', () => openIntro(i));
     li.appendChild(btn);
     list.appendChild(li);
   });
+
+  $('#list-empty').hidden = state.intros.length > 0;
 }
 
-function firstWords(body) {
-  const flat = body.replace(/\s+/g, ' ').trim();
-  return flat.length > 70 ? flat.slice(0, 70) + '…' : flat;
+function firstWords(text) {
+  const flat = text.replace(/\s+/g, ' ').trim();
+  return flat.length > 64 ? flat.slice(0, 64) + '…' : flat;
 }
 
 function openIntro(index) {
-  state.current = index;
   const intro = state.intros[index];
-  const indexes = visibleIndexes();
-  const pos = indexes.indexOf(index);
+  if (!intro) return;
+  state.current = index;
 
   $('#read-name').textContent = intro.name;
-  $('#read-count').textContent = pos >= 0 ? `${pos + 1} av ${indexes.length}` : (readerOf(intro) || '');
-  $('#read-body').innerHTML = renderBody(intro.body);
+  $('#read-count').textContent =
+    `${intro.section ? intro.section.toLowerCase() + ' · ' : ''}${index + 1} av ${state.intros.length}`;
+  $('#read-body').innerHTML = renderRead(intro);
   $('#read-body').scrollTop = 0;
 
-  $('#prev').disabled = pos <= 0;
-  $('#next').disabled = pos < 0 || pos >= indexes.length - 1;
+  $('#prev').disabled = index === 0;
+  $('#next').disabled = index === state.intros.length - 1;
 
   showView('#view-read');
   requestWakeLock();
 }
 
 function step(delta) {
-  const indexes = visibleIndexes();
-  const pos = indexes.indexOf(state.current);
-  if (pos < 0) return;
-  const target = indexes[pos + delta];
-  if (target !== undefined) openIntro(target);
+  const target = state.current + delta;
+  if (target >= 0 && target < state.intros.length) openIntro(target);
 }
 
 function setFont(px) {
@@ -427,7 +354,7 @@ function setFont(px) {
   store.set(KEY.font, String(state.font));
 }
 
-/* ================= wake lock ================= */
+/* ================= skjermlås ================= */
 
 let wakeLock = null;
 
@@ -447,15 +374,23 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && !$('#view-read').hidden) requestWakeLock();
 });
 
-/* ================= dokument inn ================= */
+/* ================= manus inn ================= */
+
+function showError(msg) {
+  const el = $('#setup-error');
+  el.textContent = msg;
+  el.hidden = !msg;
+}
 
 function loadText(text, { remember = true } = {}) {
-  const intros = parseDocument(text);
-  if (!intros.length) {
-    showError('Fant ingen introduksjoner i teksten. Legg inn en overskrift per taler, f.eks. «# Ola Nordmann».');
+  const parsed = parseDocument(text);
+  if (!parsed.intros.length) {
+    showError('Fant ingen poster i teksten. Legg inn en overskrift per taler, for eksempel «## Miriam».');
     return false;
   }
-  state.intros = intros;
+  state.intros = parsed.intros;
+  state.speakers = parsed.speakers;
+  if (state.me && !state.speakers.some((s) => same(s, state.me))) state.me = null;
   state.current = -1;
   if (remember) store.set(KEY.doc, text);
   showError('');
@@ -464,36 +399,10 @@ function loadText(text, { remember = true } = {}) {
   return true;
 }
 
-function showError(msg) {
-  const el = $('#setup-error');
-  el.textContent = msg;
-  el.hidden = !msg;
-}
-
-const EXAMPLE = `# Ola Nordmann (Anders)
-
-Kjære alle sammen. Vår neste taler har vært med i klubben i tre år,
-og har holdt **elleve** taler på den tiden.
-
-[vent til det blir stille]
-
-Ta vel imot Ola Nordmann!
-
-# Kari Nordmann
-Leses av: Fredrik
-
-Neste ut er en av dem som alltid får oss til å le.
-
-[pek mot bordet til høyre]
-
-Gi en varm applaus til Kari Nordmann!
-
-# Per Hansen (Anders)
-
-Til slutt skal vi høre fra Per, som i kveld snakker om
-hvorfor det aldri er for sent å begynne på nytt.
-
-Vær så god, Per Hansen!`;
+const builtInScript = () => {
+  const el = document.getElementById('innebygd-manus');
+  return el ? el.textContent.trim() : '';
+};
 
 /* ================= oppstart ================= */
 
@@ -516,17 +425,17 @@ function initEvents() {
     loadText(text);
   });
 
-  $('#use-example').addEventListener('click', () => {
-    $('#paste').value = EXAMPLE;
-    loadText(EXAMPLE);
+  $('#use-builtin').addEventListener('click', () => {
+    const text = builtInScript();
+    if (!text) { showError('Fant ikke det innebygde manuset.'); return; }
+    $('#paste').value = text;
+    loadText(text);
   });
 
-  document.querySelectorAll('[data-filter]').forEach((b) => {
-    b.addEventListener('click', () => {
-      state.filter = b.dataset.filter;
-      store.set(KEY.filter, state.filter);
-      renderList();
-    });
+  $('#setup-back').addEventListener('click', () => {
+    if (!state.intros.length) { showError('Legg inn et manus først.'); return; }
+    showError('');
+    showView('#view-list');
   });
 
   $('#back').addEventListener('click', () => {
@@ -539,7 +448,7 @@ function initEvents() {
   $('#font-up').addEventListener('click', () => setFont(state.font + 3));
   $('#font-down').addEventListener('click', () => setFont(state.font - 3));
 
-  // Sveip mellom introduksjoner
+  // Sveip mellom poster
   const body = $('#read-body');
   let startX = 0, startY = 0, tracking = false;
   body.addEventListener('touchstart', (e) => {
@@ -569,9 +478,10 @@ function initEvents() {
   const closeSheet = () => { sheet.hidden = true; };
   $('#menu-btn').addEventListener('click', () => { sheet.hidden = false; });
   sheet.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closeSheet));
+
   $('#m-edit').addEventListener('click', () => {
     closeSheet();
-    $('#paste').value = store.get(KEY.doc, '');
+    $('#paste').value = store.get(KEY.doc, '') || builtInScript();
     showError('');
     showView('#view-setup');
   });
@@ -581,39 +491,35 @@ function initEvents() {
     document.documentElement.dataset.theme = next;
     store.set(KEY.theme, next);
   });
-  $('#m-clear').addEventListener('click', () => {
+  $('#m-reset').addEventListener('click', () => {
     closeSheet();
-    if (!confirm('Slette den lagrede teksten på denne telefonen?')) return;
+    const text = builtInScript();
+    if (!text) return;
+    if (!confirm('Hente inn originalmanuset og forkaste endringene dine?')) return;
     store.del(KEY.doc);
-    store.del(KEY.overrides);
-    state.intros = [];
-    state.overrides = {};
-    $('#paste').value = '';
-    showView('#view-setup');
+    $('#paste').value = text;
+    loadText(text, { remember: false });
   });
 }
 
 function init() {
   document.documentElement.dataset.theme = store.get(KEY.theme, 'dark');
   state.me = store.get(KEY.me, null);
-  state.filter = store.get(KEY.filter, 'mine');
-  setFont(parseInt(store.get(KEY.font, '34'), 10) || 34);
-  try { state.overrides = JSON.parse(store.get(KEY.overrides, '{}')) || {}; } catch (e) { state.overrides = {}; }
+  setFont(parseInt(store.get(KEY.font, '30'), 10) || 30);
 
   initEvents();
 
   const saved = store.get(KEY.doc, '');
-  if (saved && saved.trim()) {
-    $('#paste').value = saved;
-    if (loadText(saved, { remember: false })) return;
-  }
+  if (saved && saved.trim() && loadText(saved, { remember: false })) return;
+
+  const builtIn = builtInScript();
+  if (builtIn && loadText(builtIn, { remember: false })) return;
+
   showView('#view-setup');
 }
 
 init();
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  });
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
 }

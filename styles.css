@@ -9,7 +9,9 @@
   --accent: #ffb454;
   --line: #2b323c;
   --danger: #ff6b6b;
-  --read-size: 34px;
+  --read-size: 30px;
+  --font-ui: "Archivo", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-read: "Literata", Georgia, "Times New Roman", serif;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -32,7 +34,7 @@ html, body {
   height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  font-family: var(--font-ui);
   -webkit-text-size-adjust: 100%;
   overscroll-behavior-y: none;
 }
@@ -55,7 +57,7 @@ body { display: flex; flex-direction: column; }
   border-bottom: 1px solid var(--line);
 }
 
-.bar-title { flex: 1; margin: 0; font-size: 17px; font-weight: 650; letter-spacing: .2px; }
+.bar-title { flex: 1; margin: 0; font-family: var(--font-read); font-size: 19px; font-weight: 600; letter-spacing: .1px; }
 
 .bar-btn {
   min-width: 44px;
@@ -74,7 +76,8 @@ body { display: flex; flex-direction: column; }
 .bar-read .bar-mid { flex: 1; min-width: 0; text-align: center; }
 .bar-right { display: flex; gap: 6px; }
 .read-name {
-  font-size: 15px; font-weight: 700;
+  font-family: var(--font-read);
+  font-size: 16px; font-weight: 600;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .read-count { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
@@ -141,6 +144,7 @@ textarea {
   color: var(--text-dim);
   margin-bottom: 8px;
 }
+.picker-hint { margin: 10px 2px 0; font-size: 13px; line-height: 1.45; color: var(--text-dim); }
 .segmented { display: flex; gap: 8px; flex-wrap: wrap; }
 .seg {
   flex: 1 1 0;
@@ -164,6 +168,15 @@ textarea {
 /* ---------- liste ---------- */
 .list { list-style: none; margin: 4px 0 0; padding: 0; }
 .list li { margin-bottom: 10px; }
+.list .day {
+  margin: 22px 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.list .day:first-child { margin-top: 6px; }
 .item {
   width: 100%;
   display: flex;
@@ -179,20 +192,21 @@ textarea {
 }
 .item:active { background: var(--bg-elev-2); }
 .item-main { flex: 1; min-width: 0; }
-.item-name { font-size: 19px; font-weight: 650; }
+.item-name { font-family: var(--font-read); font-size: 20px; font-weight: 600; }
 .item-sub { margin-top: 4px; font-size: 13px; color: var(--text-dim); }
 .chip {
   flex: none;
   padding: 6px 10px;
   border-radius: 999px;
   border: 1px solid var(--line);
-  background: var(--bg-elev-2);
+  background: transparent;
   color: var(--text-dim);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: .3px;
+  font-variant-numeric: tabular-nums;
 }
-.chip.is-me { background: var(--accent); border-color: var(--accent); color: #16191d; }
+.chip.is-me { color: var(--text); border-color: var(--text-dim); }
 .item-arrow { color: var(--text-dim); font-size: 22px; }
 .empty { color: var(--text-dim); font-size: 15px; line-height: 1.5; padding: 24px 4px; }
 
@@ -202,21 +216,46 @@ textarea {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding: 20px 18px calc(20px + var(--safe-bottom));
+  font-family: var(--font-read);
   font-size: var(--read-size);
-  line-height: 1.45;
-  font-weight: 500;
-  letter-spacing: .1px;
+  line-height: 1.38;
+  font-weight: 400;
   overflow-wrap: break-word;
   hyphens: auto;
 }
 .read-body p { margin: 0 0 .85em; }
-.read-body strong { font-weight: 800; color: var(--accent); }
+.read-body strong { font-weight: 700; color: var(--accent); }
+
+.line { margin: 0 0 .8em; }
+.line .who {
+  display: block;
+  margin-bottom: .1em;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.line.mine {
+  border-left: 4px solid var(--accent);
+  padding-left: .38em;
+}
+.line.mine .who { color: var(--accent); }
+.line.andre {
+  font-size: .5em;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+.read-body .plain { color: var(--text-dim); font-size: .7em; }
 .read-body .cue {
   display: block;
   margin: 0 0 .85em;
-  font-size: .62em;
-  font-style: italic;
+  font-family: var(--font-ui);
+  font-size: .5em;
+  font-style: normal;
   font-weight: 600;
+  letter-spacing: .2px;
   color: var(--accent);
   opacity: .95;
 }
