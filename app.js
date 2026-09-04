@@ -24,12 +24,12 @@ const PROGRAM = [
   { dag: 'FREDAG', ord: ['elisabeth'] },
   { dag: 'FREDAG', ord: ['thomas'] },
   { dag: 'FREDAG', ord: ['miriam'] },
+  { dag: 'FREDAG', ord: ['silje'] },
   { dag: 'FREDAG', ord: ['martin', 'forlover'] },
   { dag: 'LØRDAG', ord: ['rolf'] },
   { dag: 'LØRDAG', ord: ['martin', 'far'] },
   { dag: 'LØRDAG', ord: ['karo'] },
   { dag: 'LØRDAG', ord: ['peter'], ikke: ['lillebror', 'tante', 'forlover', 'far'] },
-  { dag: 'LØRDAG', ord: ['silje'] },
   { dag: 'LØRDAG', ord: ['vero'] },
   { dag: 'LØRDAG', ord: ['henning'] },
   { dag: 'LØRDAG', ord: ['georg'] }
