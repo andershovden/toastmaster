@@ -30,6 +30,11 @@ const store = {
   del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignorer */ } }
 };
 
+/* Fast farge per toastmaster: Anders i rosa, Fredrik i grønt.
+   Andre navn i manuset får en farge etter tur. */
+const SPEAKER_COLORS = { anders: 'rosa', fredrik: 'gronn' };
+const COLOR_CYCLE = ['gul', 'bla', 'rosa', 'gronn'];
+
 const same = (a, b) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
 
 /* ================= parsing ================= */
@@ -224,6 +229,14 @@ function escapeHtml(s) {
 
 const inline = (html) => html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 
+function colorClass(name) {
+  if (!name) return '';
+  const fixed = SPEAKER_COLORS[name.trim().toLowerCase()];
+  if (fixed) return 'farge-' + fixed;
+  const i = state.speakers.findIndex((s) => same(s, name));
+  return 'farge-' + COLOR_CYCLE[(i < 0 ? 0 : i) % COLOR_CYCLE.length];
+}
+
 function myLineCount(intro) {
   if (!state.me) return 0;
   return intro.lines.filter((l) => l.type === 'say' && same(l.who, state.me)).length;
@@ -244,9 +257,10 @@ function renderRead(intro) {
       out.push(`<p class="cue">${inline(escapeHtml(line.text))}</p>`);
       return;
     }
-    const mine = state.me ? (same(line.who, state.me) ? 'mine' : 'andre') : 'noyral';
+    const mine = state.me ? (same(line.who, state.me) ? 'mine' : 'andre') : 'noytral';
     out.push(
-      `<div class="line ${mine}"><span class="who">${escapeHtml(line.who)}</span>` +
+      `<div class="line ${mine} ${colorClass(line.who)}">` +
+      `<span class="who">${escapeHtml(line.who)}</span>` +
       `<span class="say">${inline(escapeHtml(line.text))}</span></div>`
     );
   });
@@ -260,7 +274,7 @@ function renderPersons() {
   wrap.innerHTML = '';
   state.speakers.forEach((p) => {
     const b = document.createElement('button');
-    b.className = 'seg';
+    b.className = 'seg ' + colorClass(p);
     b.textContent = p;
     b.setAttribute('aria-pressed', String(same(p, state.me)));
     b.addEventListener('click', () => {
@@ -304,6 +318,7 @@ function renderList() {
     btn.querySelector('.item-sub').textContent = first ? firstWords(first.text) : '';
 
     const chip = btn.querySelector('.chip');
+    chip.className = 'chip ' + colorClass(state.me);
     const mine = myLineCount(intro);
     if (state.me) {
       chip.textContent = mine ? `${mine} replikk${mine === 1 ? '' : 'er'}` : 'ingen replikker';

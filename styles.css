@@ -9,6 +9,11 @@
   --accent: #ffb454;
   --line: #2b323c;
   --danger: #ff6b6b;
+  --c-rosa: #ff8fb8;
+  --c-gronn: #62dfa0;
+  --c-gul: #ffd166;
+  --c-bla: #7cc4ff;
+  --ink-pa-farge: #16191d;
   --read-size: 30px;
   --font-ui: "Archivo", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-read: "Literata", Georgia, "Times New Roman", serif;
@@ -25,6 +30,11 @@ html[data-theme="light"] {
   --accent: #a5620a;
   --line: #e0dcd4;
   --danger: #b3261e;
+  --c-rosa: #b8356a;
+  --c-gronn: #157a4c;
+  --c-gul: #8a6100;
+  --c-bla: #1c5f97;
+  --ink-pa-farge: #ffffff;
 }
 
 * { box-sizing: border-box; }
@@ -160,9 +170,9 @@ textarea {
   cursor: pointer;
 }
 .seg[aria-pressed="true"] {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #16191d;
+  background: var(--speaker, var(--accent));
+  border-color: var(--speaker, var(--accent));
+  color: var(--ink-pa-farge);
 }
 
 /* ---------- liste ---------- */
@@ -206,7 +216,7 @@ textarea {
   letter-spacing: .3px;
   font-variant-numeric: tabular-nums;
 }
-.chip.is-me { color: var(--text); border-color: var(--text-dim); }
+.chip.is-me { color: var(--speaker, var(--text)); border-color: var(--speaker, var(--text-dim)); }
 .item-arrow { color: var(--text-dim); font-size: 22px; }
 .empty { color: var(--text-dim); font-size: 15px; line-height: 1.5; padding: 24px 4px; }
 
@@ -227,6 +237,11 @@ textarea {
 .read-body strong { font-weight: 700; color: var(--accent); }
 
 .line { margin: 0 0 .8em; }
+.farge-rosa { --speaker: var(--c-rosa); }
+.farge-gronn { --speaker: var(--c-gronn); }
+.farge-gul { --speaker: var(--c-gul); }
+.farge-bla { --speaker: var(--c-bla); }
+
 .line .who {
   display: block;
   margin-bottom: .1em;
@@ -235,13 +250,13 @@ textarea {
   font-weight: 700;
   letter-spacing: 1.2px;
   text-transform: uppercase;
-  color: var(--text-dim);
+  color: var(--speaker, var(--text-dim));
 }
 .line.mine {
-  border-left: 4px solid var(--accent);
+  border-left: 4px solid var(--speaker, var(--accent));
   padding-left: .38em;
 }
-.line.mine .who { color: var(--accent); }
+.line.andre .who { opacity: .8; }
 .line.andre {
   font-size: .5em;
   line-height: 1.45;

@@ -14,6 +14,11 @@
   --accent: #ffb454;
   --line: #2b323c;
   --danger: #ff6b6b;
+  --c-rosa: #ff8fb8;
+  --c-gronn: #62dfa0;
+  --c-gul: #ffd166;
+  --c-bla: #7cc4ff;
+  --ink-pa-farge: #16191d;
   --read-size: 30px;
   --font-ui: "Archivo", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-read: "Literata", Georgia, "Times New Roman", serif;
@@ -30,6 +35,11 @@ html[data-theme="light"] {
   --accent: #a5620a;
   --line: #e0dcd4;
   --danger: #b3261e;
+  --c-rosa: #b8356a;
+  --c-gronn: #157a4c;
+  --c-gul: #8a6100;
+  --c-bla: #1c5f97;
+  --ink-pa-farge: #ffffff;
 }
 
 * { box-sizing: border-box; }
@@ -165,9 +175,9 @@ textarea {
   cursor: pointer;
 }
 .seg[aria-pressed="true"] {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #16191d;
+  background: var(--speaker, var(--accent));
+  border-color: var(--speaker, var(--accent));
+  color: var(--ink-pa-farge);
 }
 
 /* ---------- liste ---------- */
@@ -211,7 +221,7 @@ textarea {
   letter-spacing: .3px;
   font-variant-numeric: tabular-nums;
 }
-.chip.is-me { color: var(--text); border-color: var(--text-dim); }
+.chip.is-me { color: var(--speaker, var(--text)); border-color: var(--speaker, var(--text-dim)); }
 .item-arrow { color: var(--text-dim); font-size: 22px; }
 .empty { color: var(--text-dim); font-size: 15px; line-height: 1.5; padding: 24px 4px; }
 
@@ -232,6 +242,11 @@ textarea {
 .read-body strong { font-weight: 700; color: var(--accent); }
 
 .line { margin: 0 0 .8em; }
+.farge-rosa { --speaker: var(--c-rosa); }
+.farge-gronn { --speaker: var(--c-gronn); }
+.farge-gul { --speaker: var(--c-gul); }
+.farge-bla { --speaker: var(--c-bla); }
+
 .line .who {
   display: block;
   margin-bottom: .1em;
@@ -240,13 +255,13 @@ textarea {
   font-weight: 700;
   letter-spacing: 1.2px;
   text-transform: uppercase;
-  color: var(--text-dim);
+  color: var(--speaker, var(--text-dim));
 }
 .line.mine {
-  border-left: 4px solid var(--accent);
+  border-left: 4px solid var(--speaker, var(--accent));
   padding-left: .38em;
 }
-.line.mine .who { color: var(--accent); }
+.line.andre .who { opacity: .8; }
 .line.andre {
   font-size: .5em;
   line-height: 1.45;
@@ -534,6 +549,11 @@ const store = {
   del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignorer */ } }
 };
 
+/* Fast farge per toastmaster: Anders i rosa, Fredrik i grønt.
+   Andre navn i manuset får en farge etter tur. */
+const SPEAKER_COLORS = { anders: 'rosa', fredrik: 'gronn' };
+const COLOR_CYCLE = ['gul', 'bla', 'rosa', 'gronn'];
+
 const same = (a, b) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
 
 /* ================= parsing ================= */
@@ -728,6 +748,14 @@ function escapeHtml(s) {
 
 const inline = (html) => html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 
+function colorClass(name) {
+  if (!name) return '';
+  const fixed = SPEAKER_COLORS[name.trim().toLowerCase()];
+  if (fixed) return 'farge-' + fixed;
+  const i = state.speakers.findIndex((s) => same(s, name));
+  return 'farge-' + COLOR_CYCLE[(i < 0 ? 0 : i) % COLOR_CYCLE.length];
+}
+
 function myLineCount(intro) {
   if (!state.me) return 0;
   return intro.lines.filter((l) => l.type === 'say' && same(l.who, state.me)).length;
@@ -748,9 +776,10 @@ function renderRead(intro) {
       out.push(`<p class="cue">${inline(escapeHtml(line.text))}</p>`);
       return;
     }
-    const mine = state.me ? (same(line.who, state.me) ? 'mine' : 'andre') : 'noyral';
+    const mine = state.me ? (same(line.who, state.me) ? 'mine' : 'andre') : 'noytral';
     out.push(
-      `<div class="line ${mine}"><span class="who">${escapeHtml(line.who)}</span>` +
+      `<div class="line ${mine} ${colorClass(line.who)}">` +
+      `<span class="who">${escapeHtml(line.who)}</span>` +
       `<span class="say">${inline(escapeHtml(line.text))}</span></div>`
     );
   });
@@ -764,7 +793,7 @@ function renderPersons() {
   wrap.innerHTML = '';
   state.speakers.forEach((p) => {
     const b = document.createElement('button');
-    b.className = 'seg';
+    b.className = 'seg ' + colorClass(p);
     b.textContent = p;
     b.setAttribute('aria-pressed', String(same(p, state.me)));
     b.addEventListener('click', () => {
@@ -808,6 +837,7 @@ function renderList() {
     btn.querySelector('.item-sub').textContent = first ? firstWords(first.text) : '';
 
     const chip = btn.querySelector('.chip');
+    chip.className = 'chip ' + colorClass(state.me);
     const mine = myLineCount(intro);
     if (state.me) {
       chip.textContent = mine ? `${mine} replikk${mine === 1 ? '' : 'er'}` : 'ingen replikker';
