@@ -155,6 +155,10 @@ textarea {
   margin-bottom: 8px;
 }
 .picker-hint { margin: 10px 2px 0; font-size: 13px; line-height: 1.45; color: var(--text-dim); }
+.sync { margin: 6px 2px 0; font-size: 12px; line-height: 1.45; color: var(--text-dim); }
+.sync:empty { display: none; }
+.sync.er-ny { color: var(--c-gronn); }
+.sync.er-feil { color: var(--danger); }
 .segmented { display: flex; gap: 8px; flex-wrap: wrap; }
 .seg {
   flex: 1 1 0;

@@ -21,7 +21,8 @@
   </header>
 
   <div class="pad">
-    <p class="lead">Rediger teksten under, last opp et dokument, eller hent inn originalmanuset igjen.</p>
+    <p class="lead">Manuset hentes normalt fra Google-dokumentet. Redigerer du her, kobles siden fra
+       dokumentet til du slår synk på igjen i menyen.</p>
 
     <textarea id="paste" rows="12" spellcheck="false"></textarea>
     <button id="use-paste" class="btn btn-primary btn-block">Bruk denne teksten</button>
@@ -62,6 +63,7 @@ Anders: Og med ekstreme fordeler.
       <span class="picker-label">Hvem er du?</span>
       <div id="who" class="segmented" role="group" aria-label="Velg hvem du er"></div>
       <p class="picker-hint">Dine replikker vises store og uthevet. Den andres står som stikkord.</p>
+      <p id="sync-status" class="sync"></p>
     </div>
 
     <ul id="list" class="list"></ul>
@@ -95,6 +97,7 @@ Anders: Og med ekstreme fordeler.
 <div id="sheet" class="sheet" hidden>
   <div class="sheet-backdrop" data-close></div>
   <div class="sheet-panel" role="dialog" aria-label="Meny">
+    <button id="m-sync" class="sheet-item">Slå av synk mot dokumentet</button>
     <button id="m-edit" class="sheet-item">Rediger eller bytt manus</button>
     <button id="m-theme" class="sheet-item">Bytt lyst / mørkt</button>
     <button id="m-reset" class="sheet-item danger">Hent inn originalmanuset</button>

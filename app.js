@@ -1,17 +1,23 @@
 /* Toastmaster – enkel lesevisning for et toastmaster-manus.
-   Manuset er delt i poster (én per taler som skal introduseres). Hver post
-   består av replikker merket med hvem som sier dem. Du velger hvem du er,
-   og dine replikker vises store og uthevet, mens den andres står som
-   stikkord slik at du vet når det er din tur. */
+   Manuset hentes fra Google-dokumentet via /manus (Netlify proxyer dit),
+   og oppdateres automatisk mens siden er åpen. Manuset er delt i poster –
+   én per taler – og hver post består av replikker merket med hvem som sier
+   dem. Du velger hvem du er, og dine replikker vises store og uthevet,
+   mens den andres står som stikkord slik at du vet når det er din tur. */
 
 'use strict';
 
-const KEY = { doc: 'tm.doc', me: 'tm.me', font: 'tm.font', theme: 'tm.theme' };
+const KEY = { doc: 'tm.doc', me: 'tm.me', font: 'tm.font', theme: 'tm.theme', sync: 'tm.sync' };
 const DEFAULT_PERSONS = ['Anders', 'Fredrik'];
+
+/* Fast farge per toastmaster: Anders i rosa, Fredrik i grønt.
+   Andre navn i manuset får en farge etter tur. */
+const SPEAKER_COLORS = { anders: 'rosa', fredrik: 'gronn' };
+const COLOR_CYCLE = ['gul', 'bla', 'rosa', 'gronn'];
 
 const state = {
   intros: [],       // { name, section, lines: [{ type, who, text }] }
-  speakers: [],     // navn som opptrer som replikkmerker i manuset
+  speakers: [],
   me: null,
   font: 30,
   current: -1
@@ -30,120 +36,165 @@ const store = {
   del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignorer */ } }
 };
 
-/* Fast farge per toastmaster: Anders i rosa, Fredrik i grønt.
-   Andre navn i manuset får en farge etter tur. */
-const SPEAKER_COLORS = { anders: 'rosa', fredrik: 'gronn' };
-const COLOR_CYCLE = ['gul', 'bla', 'rosa', 'gronn'];
-
 const same = (a, b) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
 
-/* ================= parsing ================= */
+/* ================= parsing =================
+   Manuset kan være skrevet med markdown-overskrifter (# DAG / ## Navn),
+   men også som vanlig tekst rett fra Google Docs. Da gjenkjennes dagene på
+   at de står i STORE BOKSTAVER, og postene på at de er korte linjer uten
+   punktum som følges av replikker. */
 
-const HASH_HEADING = /^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/;
-const BRACKET_HEADING = /^\s{0,3}\[(.+?)\]\s*$/;
-const LABELLED_HEADING = /^\s{0,3}(?:taler|speaker|navn|name)\s*[:\-–]\s*(.+?)\s*$/i;
-const BULLET = /^\s*[-*•]\s+/;
-const CUE_LINE = /^\s*[[(]([^[\]()]*)[\])]\s*$/;
+const HASH_HEADING = /^(#{1,6})\s+(.+?)\s*#*\s*$/;
+const BRACKET_HEADING = /^\[(.+?)\]$/;
+const LABELLED_HEADING = /^(?:taler|speaker|navn|name)\s*[:\-–]\s*(.+?)$/i;
+const BULLET = /^\s*(?:[-*•●○▪–]|\d+[.)])\s+/;
+const NUMBERED = /^\d+[.)]\s+/;
+const CUE_LINE = /^[[(]([^[\]()]*)[\])]$/;
 const SPEAKER_LINE = /^([\p{Lu}][\p{L}\p{M}.'\- ]{0,20}?)\s*:\s+(.+)$/u;
 
-/* [hakeparentes] er både overskrift og regibeskjed. Bruker manuset
-   #-overskrifter, er hakeparentes alltid regibeskjed. */
-function looksLikeName(text) {
-  const t = text.trim();
-  return t.length > 0 && t.length <= 60 &&
-    t.split(/\s+/).length <= 4 &&
-    !/[.!?:]/.test(t) &&
-    t[0] === t[0].toLocaleUpperCase('no');
-}
-
-function parseDocument(text) {
-  const clean = String(text).replace(/^﻿/, '').replace(/\r\n?/g, '\n');
-  const lines = clean.split('\n').map((l) => l.replace(BULLET, ''));
-
-  const levels = new Set();
-  lines.forEach((l) => { const m = HASH_HEADING.exec(l); if (m) levels.add(m[1].length); });
-  const sorted = [...levels].sort();
-  const sectionLevel = sorted.length > 1 ? sorted[0] : null;   // «# FREDAG» over «## Taler»
-  const allowBrackets = levels.size === 0;
-
-  const intros = [];
-  let section = null;
-  let current = null;
-
-  for (const line of lines) {
-    let name = null;
-    let level = null;
-
-    const hash = HASH_HEADING.exec(line);
-    const labelled = hash ? null : LABELLED_HEADING.exec(line);
-    const bracket = hash || labelled || !allowBrackets ? null : BRACKET_HEADING.exec(line);
-
-    if (hash) { level = hash[1].length; name = hash[2].trim(); }
-    else if (labelled) { level = 2; name = labelled[1].trim(); }
-    else if (bracket && looksLikeName(bracket[1])) { level = 2; name = bracket[1].trim(); }
-
-    if (name !== null) {
-      if (sectionLevel !== null && level === sectionLevel) { section = name; continue; }
-      current = { name: name.replace(/^\d+[.)]\s*/, ''), section, raw: [] };
-      intros.push(current);
-      continue;
-    }
-    if (current) current.raw.push(line);
-  }
-
-  if (!intros.length) {
-    // Ingen overskrifter: hvert avsnitt er én post, første linje er navnet.
-    clean.split(/\n\s*\n+/).map((b) => b.trim()).filter(Boolean).forEach((block) => {
-      const blockLines = block.split('\n');
-      intros.push({ name: blockLines.shift().trim(), section: null, raw: blockLines });
-    });
-  }
-
-  const speakers = findSpeakers(intros);
-  intros.forEach((intro) => {
-    intro.lines = toLines(intro.raw, speakers);
-    delete intro.raw;
+function splitLines(text) {
+  return String(text).replace(/^﻿/, '').replace(/\r\n?/g, '\n').split('\n').map((raw) => {
+    const bulleted = BULLET.test(raw) && !NUMBERED.test(raw.trim());
+    return { text: raw.replace(BULLET, '').trim(), bulleted };
   });
-
-  return {
-    intros: intros.filter((i) => i.name),
-    speakers: speakers.length ? speakers : DEFAULT_PERSONS.slice()
-  };
 }
 
 /* Et navn foran kolon regnes som replikkmerke først når det går igjen i
    manuset – slik at enkeltlinjer som «Musikkforslag:» blir vanlig tekst. */
-function findSpeakers(intros) {
+function findSpeakers(lines) {
   const counts = new Map();
-  intros.forEach((intro) => intro.raw.forEach((line) => {
-    if (CUE_LINE.test(line)) return;
-    const m = SPEAKER_LINE.exec(line.trim());
+  lines.forEach(({ text }) => {
+    if (!text || CUE_LINE.test(text)) return;
+    const m = SPEAKER_LINE.exec(text);
     if (!m) return;
     const name = m[1].trim();
     const key = name.toLowerCase();
     const hit = counts.get(key) || { name, n: 0 };
     hit.n += 1;
     counts.set(key, hit);
-  }));
+  });
   return [...counts.values()].filter((c) => c.n >= 3).map((c) => c.name);
 }
 
-function toLines(raw, speakers) {
+function isDayLine(text) {
+  if (!text || text.length > 40 || text.includes(':')) return false;
+  const word = (text.split(/\s+/)[0] || '').replace(/[^\p{L}]/gu, '');
+  return word.length >= 3 &&
+    word === word.toLocaleUpperCase('no') &&
+    word !== word.toLocaleLowerCase('no');
+}
+
+function looksLikeHeading(line, prev) {
+  const t = line.text;
+  if (!t || line.bulleted || t.length > 70) return false;
+  if (/[.!?,;:]$/.test(t)) return false;
+  if (CUE_LINE.test(t)) return false;
+  return !prev || !prev.text || isDayLine(prev.text);   // står alene, etter luft
+}
+
+/* En kandidat er en overskrift bare hvis det kommer replikker under den før
+   neste kandidat. Ellers er den vanlig tekst – for eksempel et punkt i en
+   liste midt i en post. */
+function headingHasLines(lines, from, speakers, prevOf) {
+  for (let i = from + 1; i < lines.length; i++) {
+    const t = lines[i].text;
+    if (!t) continue;
+    const m = SPEAKER_LINE.exec(t);
+    if (m && speakers.some((s) => same(s, m[1]))) return true;
+    if (isDayLine(t)) continue;
+    if (looksLikeHeading(lines[i], prevOf(i))) return false;
+  }
+  return false;
+}
+
+function parseDocument(text) {
+  const lines = splitLines(text);
+  const speakers = findSpeakers(lines);
   const isSpeaker = (n) => speakers.some((s) => same(s, n));
   const canonical = (n) => speakers.find((s) => same(s, n)) || n;
 
-  const lines = raw.map((line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return { type: 'blank' };
-    if (CUE_LINE.test(trimmed)) return { type: 'cue', text: trimmed.replace(/^[[(]|[\])]$/g, '').trim() };
-    const m = SPEAKER_LINE.exec(trimmed);
-    if (m && isSpeaker(m[1])) return { type: 'say', who: canonical(m[1].trim()), text: m[2].trim() };
-    return { type: 'text', text: trimmed };
+  const hashLevels = new Set();
+  lines.forEach(({ text: t }) => { const m = HASH_HEADING.exec(t); if (m) hashLevels.add(m[1].length); });
+  const levels = [...hashLevels].sort();
+  const sectionLevel = levels.length > 1 ? levels[0] : null;
+  const markdown = hashLevels.size > 0;
+  const prevOf = (i) => (i > 0 ? lines[i - 1] : null);
+
+  /* Google Docs legger dokumentets tittel øverst. Den hopper vi over når det
+     står en dagoverskrift mellom tittelen og den første replikken. */
+  let titleIndex = -1;
+  if (!markdown) {
+    const first = lines.findIndex((l) => l.text);
+    if (first >= 0 && looksLikeHeading(lines[first], null) && !isDayLine(lines[first].text)) {
+      for (let i = first + 1; i < lines.length; i++) {
+        const t = lines[i].text;
+        if (!t) continue;
+        if (isDayLine(t)) { titleIndex = first; break; }
+        const m = SPEAKER_LINE.exec(t);
+        if (m && isSpeaker(m[1])) break;
+      }
+    }
+  }
+
+  const intros = [];
+  let section = null;
+  let current = null;
+
+  const startIntro = (name) => {
+    current = { name: name.replace(NUMBERED, '').trim(), section, lines: [] };
+    intros.push(current);
+  };
+  const push = (line) => {
+    if (!current) startIntro('Velkomst');
+    current.lines.push(line);
+  };
+
+  lines.forEach((line, i) => {
+    const t = line.text;
+
+    if (i === titleIndex) return;
+    if (!t) { if (current) push({ type: 'blank' }); return; }
+
+    if (CUE_LINE.test(t)) { push({ type: 'cue', text: CUE_LINE.exec(t)[1].trim() }); return; }
+
+    const say = SPEAKER_LINE.exec(t);
+    if (say && isSpeaker(say[1])) {
+      push({ type: 'say', who: canonical(say[1].trim()), text: say[2].trim() });
+      return;
+    }
+
+    if (markdown) {
+      const hash = HASH_HEADING.exec(t);
+      if (hash) {
+        const name = hash[2].trim();
+        if (sectionLevel !== null && hash[1].length === sectionLevel) { section = name; return; }
+        startIntro(name);
+        return;
+      }
+      const labelled = LABELLED_HEADING.exec(t);
+      if (labelled) { startIntro(labelled[1]); return; }
+    } else {
+      if (isDayLine(t)) { section = t; return; }
+      const bracket = BRACKET_HEADING.exec(t);
+      if (bracket) { startIntro(bracket[1]); return; }
+      if (looksLikeHeading(line, prevOf(i)) && headingHasLines(lines, i, speakers, prevOf)) {
+        startIntro(t);
+        return;
+      }
+    }
+
+    push({ type: 'text', text: t });
   });
 
-  while (lines.length && lines[0].type === 'blank') lines.shift();
-  while (lines.length && lines[lines.length - 1].type === 'blank') lines.pop();
-  return lines;
+  intros.forEach((intro) => {
+    while (intro.lines.length && intro.lines[0].type === 'blank') intro.lines.shift();
+    while (intro.lines.length && intro.lines[intro.lines.length - 1].type === 'blank') intro.lines.pop();
+  });
+
+  return {
+    intros: intros.filter((i) => i.name && i.lines.length),
+    speakers: speakers.length ? speakers : DEFAULT_PERSONS.slice()
+  };
 }
 
 /* ================= .docx ================= */
@@ -253,10 +304,8 @@ function renderRead(intro) {
     if (line.type === 'text') { paragraph.push(line.text); return; }
     flush();
     if (line.type === 'blank') return;
-    if (line.type === 'cue') {
-      out.push(`<p class="cue">${inline(escapeHtml(line.text))}</p>`);
-      return;
-    }
+    if (line.type === 'cue') { out.push(`<p class="cue">${inline(escapeHtml(line.text))}</p>`); return; }
+
     const mine = state.me ? (same(line.who, state.me) ? 'mine' : 'andre') : 'noytral';
     out.push(
       `<div class="line ${mine} ${colorClass(line.who)}">` +
@@ -340,16 +389,17 @@ function firstWords(text) {
   return flat.length > 64 ? flat.slice(0, 64) + '…' : flat;
 }
 
-function openIntro(index) {
+function openIntro(index, { keepScroll = false } = {}) {
   const intro = state.intros[index];
   if (!intro) return;
+  const scroll = keepScroll ? $('#read-body').scrollTop : 0;
   state.current = index;
 
   $('#read-name').textContent = intro.name;
   $('#read-count').textContent =
     `${intro.section ? intro.section.toLowerCase() + ' · ' : ''}${index + 1} av ${state.intros.length}`;
   $('#read-body').innerHTML = renderRead(intro);
-  $('#read-body').scrollTop = 0;
+  $('#read-body').scrollTop = scroll;
 
   $('#prev').disabled = index === 0;
   $('#next').disabled = index === state.intros.length - 1;
@@ -385,10 +435,6 @@ function releaseWakeLock() {
   if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
 }
 
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && !$('#view-read').hidden) requestWakeLock();
-});
-
 /* ================= manus inn ================= */
 
 function showError(msg) {
@@ -397,20 +443,29 @@ function showError(msg) {
   el.hidden = !msg;
 }
 
-function loadText(text, { remember = true } = {}) {
+function loadText(text, { remember = true, view = true } = {}) {
   const parsed = parseDocument(text);
   if (!parsed.intros.length) {
-    showError('Fant ingen poster i teksten. Legg inn en overskrift per taler, for eksempel «## Miriam».');
+    showError('Fant ingen poster i teksten. Hver taler trenger en egen overskriftslinje.');
     return false;
   }
+
+  const wasReading = !$('#view-read').hidden;
+  const readingName = wasReading && state.intros[state.current] ? state.intros[state.current].name : null;
+
   state.intros = parsed.intros;
   state.speakers = parsed.speakers;
   if (state.me && !state.speakers.some((s) => same(s, state.me))) state.me = null;
-  state.current = -1;
   if (remember) store.set(KEY.doc, text);
   showError('');
   renderList();
-  showView('#view-list');
+
+  if (wasReading) {
+    const i = readingName ? state.intros.findIndex((x) => x.name === readingName) : -1;
+    if (i >= 0) { openIntro(i, { keepScroll: true }); return true; }
+  }
+  state.current = -1;
+  if (view) showView('#view-list');
   return true;
 }
 
@@ -419,6 +474,76 @@ const builtInScript = () => {
   return el ? el.textContent.trim() : '';
 };
 
+/* ================= synk mot Google-dokumentet =================
+   Netlify proxyer /manus til dokumentets txt-eksport, slik at siden kan
+   hente det fra sitt eget domene. Vi henter på nytt hvert tiende sekund
+   mens siden er synlig, og bytter bare ut teksten når den faktisk er endret. */
+
+const MANUS_URL = '/manus';
+const SYNC_MS = 10000;
+const SYNC_MS_ETTER_FEIL = 60000;
+
+let syncTimer = null;
+let syncFeil = 0;
+let syncAktiv = false;   // settes bare i byggene som faktisk har /manus
+
+const syncPaa = () => store.get(KEY.sync, 'på') === 'på';
+
+function setSyncStatus(kind, detail) {
+  const el = $('#sync-status');
+  if (!el) return;
+  if (!syncPaa()) { el.textContent = 'Synk mot dokumentet er slått av.'; el.className = 'sync'; return; }
+  const tid = new Date().toLocaleTimeString('no', { hour: '2-digit', minute: '2-digit' });
+  if (kind === 'venter') { el.textContent = 'Henter manuset fra dokumentet …'; el.className = 'sync'; }
+  else if (kind === 'ok') { el.textContent = `Hentet fra dokumentet ${tid}.`; el.className = 'sync'; }
+  else if (kind === 'ny') { el.textContent = `Oppdatert fra dokumentet ${tid}.`; el.className = 'sync er-ny'; }
+  else { el.textContent = `Får ikke kontakt med dokumentet – viser sist lagrede manus. (${detail})`; el.className = 'sync er-feil'; }
+}
+
+async function hentManus() {
+  const res = await fetch(`${MANUS_URL}?t=${Date.now()}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('svar ' + res.status);
+  const text = await res.text();
+  if (/^\s*<(?:!doctype|html)/i.test(text)) throw new Error('fikk en nettside, ikke dokumentet');
+  if (text.trim().length < 40) throw new Error('tomt svar');
+  return text;
+}
+
+async function syncNaa() {
+  if (!syncAktiv || !syncPaa()) return;
+  try {
+    const text = await hentManus();
+    syncFeil = 0;
+    if (text === store.get(KEY.doc, '')) { setSyncStatus('ok'); return; }
+
+    const parsed = parseDocument(text);
+    // Et halvferdig eller feilhentet dokument skal ikke få slette et manus som virker.
+    if (parsed.intros.length < 3 && state.intros.length >= 3) {
+      setSyncStatus('feil', 'dokumentet ga bare ' + parsed.intros.length + ' poster');
+      return;
+    }
+    if (loadText(text, { view: false })) setSyncStatus('ny');
+  } catch (e) {
+    syncFeil += 1;
+    setSyncStatus('feil', e.message || 'ukjent feil');
+  } finally {
+    planlegg();
+  }
+}
+
+function planlegg() {
+  clearTimeout(syncTimer);
+  if (!syncPaa() || document.visibilityState !== 'visible') return;
+  syncTimer = setTimeout(syncNaa, syncFeil > 2 ? SYNC_MS_ETTER_FEIL : SYNC_MS);
+}
+
+function settSync(paa) {
+  store.set(KEY.sync, paa ? 'på' : 'av');
+  clearTimeout(syncTimer);
+  setSyncStatus(paa ? 'ok' : 'av');
+  if (paa) syncNaa();
+}
+
 /* ================= oppstart ================= */
 
 function initEvents() {
@@ -426,7 +551,7 @@ function initEvents() {
     const file = ev.target.files && ev.target.files[0];
     if (!file) return;
     try {
-      loadText(await readFileAsText(file));
+      if (loadText(await readFileAsText(file))) settSync(false);
     } catch (e) {
       showError(e.message || 'Klarte ikke lese filen.');
     } finally {
@@ -437,14 +562,14 @@ function initEvents() {
   $('#use-paste').addEventListener('click', () => {
     const text = $('#paste').value;
     if (!text.trim()) { showError('Lim inn tekst først.'); return; }
-    loadText(text);
+    if (loadText(text)) settSync(false);
   });
 
   $('#use-builtin').addEventListener('click', () => {
     const text = builtInScript();
     if (!text) { showError('Fant ikke det innebygde manuset.'); return; }
     $('#paste').value = text;
-    loadText(text);
+    if (loadText(text)) settSync(false);
   });
 
   $('#setup-back').addEventListener('click', () => {
@@ -491,9 +616,14 @@ function initEvents() {
   // Meny
   const sheet = $('#sheet');
   const closeSheet = () => { sheet.hidden = true; };
-  $('#menu-btn').addEventListener('click', () => { sheet.hidden = false; });
+  $('#menu-btn').addEventListener('click', () => {
+    $('#m-sync').hidden = !syncAktiv;
+    $('#m-sync').textContent = syncPaa() ? 'Slå av synk mot dokumentet' : 'Slå på synk mot dokumentet';
+    sheet.hidden = false;
+  });
   sheet.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closeSheet));
 
+  $('#m-sync').addEventListener('click', () => { closeSheet(); settSync(!syncPaa()); });
   $('#m-edit').addEventListener('click', () => {
     closeSheet();
     $('#paste').value = store.get(KEY.doc, '') || builtInScript();
@@ -510,10 +640,14 @@ function initEvents() {
     closeSheet();
     const text = builtInScript();
     if (!text) return;
-    if (!confirm('Hente inn originalmanuset og forkaste endringene dine?')) return;
-    store.del(KEY.doc);
-    $('#paste').value = text;
-    loadText(text, { remember: false });
+    if (!confirm('Hente inn det innebygde manuset og slå av synk mot dokumentet?')) return;
+    if (loadText(text)) settSync(false);
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') { clearTimeout(syncTimer); return; }
+    if (!$('#view-read').hidden) requestWakeLock();
+    syncNaa();
   });
 }
 
@@ -525,12 +659,16 @@ function init() {
   initEvents();
 
   const saved = store.get(KEY.doc, '');
-  if (saved && saved.trim() && loadText(saved, { remember: false })) return;
+  if (!(saved && saved.trim() && loadText(saved, { remember: false }))) {
+    const builtIn = builtInScript();
+    if (!(builtIn && loadText(builtIn, { remember: false }))) showView('#view-setup');
+  }
 
-  const builtIn = builtInScript();
-  if (builtIn && loadText(builtIn, { remember: false })) return;
-
-  showView('#view-setup');
+  /* SYNK-START */
+  syncAktiv = true;
+  setSyncStatus(syncPaa() ? 'venter' : 'av');
+  syncNaa();
+  /* SYNK-SLUTT */
 }
 
 init();

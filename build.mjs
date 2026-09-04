@@ -17,7 +17,8 @@ writeFileSync('index.html', html);
 
 const css = readFileSync('styles.css', 'utf8');
 const js = readFileSync('app.js', 'utf8')
-  .replace(/\n?if \('serviceWorker' in navigator\)[\s\S]*$/, '\n');   // ingen sw.js i én-fil-versjonen
+  .replace(/\n?if \('serviceWorker' in navigator\)[\s\S]*$/, '\n')     // ingen sw.js i én-fil-versjonen
+  .replace(/\/\* SYNK-START \*\/[\s\S]*?\/\* SYNK-SLUTT \*\//, '');   // ingen /manus-proxy utenfor Netlify
 
 const title = /<title>([\s\S]*?)<\/title>/.exec(html)[1];
 const fonts = html.match(/<link rel="(?:preconnect|stylesheet)"[^>]*fonts\.g[^>]*>/g).join('\n');

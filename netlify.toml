@@ -1,0 +1,18 @@
+# Netlify serverer de statiske filene i rota som de er.
+[build]
+  publish = "."
+
+# Google Docs sender ikke CORS-headere, så nettleseren får ikke hente
+# dokumentet direkte. Netlify henter det på serversiden i stedet, og siden
+# spør sitt eget domene på /manus.
+[[redirects]]
+  from = "/manus"
+  to = "https://docs.google.com/document/d/1fxHySwlXPen2duWnzIGj0i8A4qTYEqxAPE3YBtZ5oEM/export?format=txt"
+  status = 200
+  force = true
+
+# Manuset er personlig – hold det utenfor søkemotorer.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
