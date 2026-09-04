@@ -23,6 +23,7 @@
   --font-ui: "Archivo", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-read: "Literata", Georgia, "Times New Roman", serif;
   --safe-top: env(safe-area-inset-top, 0px);
+  --bar-top: calc(env(safe-area-inset-top, 0px) + 14px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -44,9 +45,14 @@ html[data-theme="light"] {
 
 * { box-sizing: border-box; }
 
-html, body {
-  margin: 0;
+html {
   height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  min-height: 100dvh;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-ui);
@@ -57,6 +63,10 @@ html, body {
 body { display: flex; flex-direction: column; }
 
 .view { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+
+/* Lesevisningen fyller skjermen: teksten scroller inni, knappene står i ro.
+   dvh følger adresselinjen på mobil, så ingenting havner utenfor. */
+#view-read { height: 100vh; height: 100dvh; }
 .view[hidden] { display: none; }
 
 /* ---------- topplinje ---------- */
@@ -67,12 +77,23 @@ body { display: flex; flex-direction: column; }
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: calc(10px + var(--safe-top)) 12px 10px;
+  padding: var(--bar-top) 12px 12px;
   background: var(--bg-elev);
   border-bottom: 1px solid var(--line);
 }
 
-.bar-title { flex: 1; margin: 0; font-family: var(--font-read); font-size: 19px; font-weight: 600; letter-spacing: .1px; }
+.bar-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-read);
+  font-size: clamp(17px, 4.6vw, 20px);
+  font-weight: 600;
+  letter-spacing: .1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .bar-btn {
   min-width: 44px;
@@ -92,13 +113,13 @@ body { display: flex; flex-direction: column; }
 .bar-right { display: flex; gap: 6px; }
 .read-name {
   font-family: var(--font-read);
-  font-size: 16px; font-weight: 600;
+  font-size: clamp(14px, 4vw, 17px); font-weight: 600;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .read-count { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
 
 /* ---------- innhold ---------- */
-.pad { padding: 16px 16px calc(28px + var(--safe-bottom)); overflow-y: auto; flex: 1; }
+.pad { padding: 18px 16px calc(32px + var(--safe-bottom)); }
 .lead { margin: 0 0 16px; color: var(--text-dim); font-size: 15px; line-height: 1.5; }
 .or { text-align: center; color: var(--text-dim); margin: 14px 0; font-size: 14px; }
 
@@ -167,7 +188,7 @@ textarea {
 .segmented { display: flex; gap: 8px; flex-wrap: wrap; }
 .seg {
   flex: 1 1 0;
-  min-width: 96px;
+  min-width: 84px;
   min-height: 48px;
   padding: 12px 14px;
   border: 1px solid var(--line);
@@ -211,7 +232,7 @@ textarea {
 }
 .item:active { background: var(--bg-elev-2); }
 .item-main { flex: 1; min-width: 0; }
-.item-name { font-family: var(--font-read); font-size: 20px; font-weight: 600; }
+.item-name { font-family: var(--font-read); font-size: clamp(17px, 5vw, 21px); font-weight: 600; }
 .item-sub { margin-top: 4px; font-size: 13px; color: var(--text-dim); }
 .chip {
   flex: none;
@@ -234,7 +255,7 @@ textarea {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 20px 18px calc(20px + var(--safe-bottom));
+  padding: 20px clamp(14px, 4.5vw, 22px) calc(20px + var(--safe-bottom));
   font-family: var(--font-read);
   font-size: var(--read-size);
   line-height: 1.38;
@@ -322,8 +343,27 @@ textarea {
 }
 .sheet-item.danger { color: var(--danger); }
 
+/* Små skjermer (iPhone SE og lignende) */
+@media (max-width: 360px) {
+  .pad { padding-left: 12px; padding-right: 12px; }
+  .item { padding: 14px; gap: 8px; }
+  .bar { gap: 6px; padding-left: 10px; padding-right: 10px; }
+  .bar-btn { min-width: 40px; padding: 0 9px; font-size: 15px; }
+  .chip { padding: 5px 8px; font-size: 11px; }
+}
+
+/* Liggende mobil: mindre topp og bunn, så teksten får plassen */
+@media (orientation: landscape) and (max-height: 520px) {
+  :root { --bar-top: calc(env(safe-area-inset-top, 0px) + 8px); }
+  .bar { padding-bottom: 8px; }
+  .pad { padding-top: 12px; }
+  .readnav { padding-top: 6px; padding-bottom: calc(6px + var(--safe-bottom)); }
+  .btn-nav { min-height: 44px; padding: 8px 14px; }
+}
+
 @media (min-width: 720px) {
-  .pad, .read-body, .readnav, .bar { max-width: 720px; margin-inline: auto; width: 100%; }
+  .pad, .read-body, .readnav { max-width: 720px; margin-inline: auto; width: 100%; }
+  .bar > * { max-width: 720px; }
 }
 </style>
 
@@ -421,7 +461,6 @@ Anders: Og med ekstreme fordeler.
 
 <script type="text/plain" id="innebygd-manus">
 # FREDAG
-
 ## Velkomst
 Anders: Hjertelig velkommen til middag og velkommen til bords, alle sammen! For en utrolig fin gjeng å se samlet her i kveld. La os begynne med en skål!
 Fredrik: I helgen har vi lyst til å snu litt om på de klassiske bryllupsreglene. I stedet for at vi toastmastere bare ramser opp tørre fakta om kveldens talere, har vi sørget for å filme brudeparet selv – Karo og Peter – og da laget eksklusive introvideoer til alle som skal på talerstolen!
@@ -430,14 +469,6 @@ Fredrik: Og til dere som ikke skal holde tale i kveld: Fortvil ikke! Dere slippe
 Anders: Alt dette gjør vi av én spesiell grunn: Alt vi har laget her blir som en unik, digital minnebok for Karo og Peter. Det blir et uforglemmelig tidsbilde fullt av taler, videoklipp, bilder og hemmeligheter som de skal få ta med seg videre og ta vare på for resten av livet.
 Fredrik: Så spenn fast setebeltet, fyll opp glassene og gjør dere klare for denne "rolige" fredagen.
 Anders: Kjenner jeg denne gjengen rett blir det alt annet enn rolig. Men igjen, velkommen, la oss kose oss og nyte og bli kjent. Igjen, skål og nå begynner det.
-
-## Miriam (Karos venninne)
-Fredrik: Da er vi i gang med talene, og vi skal starte med en av Karos absolutte favorittpersoner, verdens beste venninne og en dame med en ekstrem forretningsteft. Miriam!
-Anders: Og med ekstreme fordeler.
-Fredrik: og ekstreme …
-Anders: Nei, dette er absolutt et fyrverkeri av en dame. Det sies at de to havnet på nachspiel med Vinni på en festival for noen år siden, og siden har de hengt sammen.
-Fredrik: De støtter hverandre i tykt og tynt, og nå skal vi se hva brudeparet mener Miriam egentlig har å lære Karo. Snurr film!
-(Spill video)
 
 ## Elisabeth (Peters tante)
 Anders: Turen har kommet til en dame som har et mildt sagt anstrengt forhold til både reglementer og autoriteter.
@@ -454,6 +485,14 @@ Anders: Ja, jeg tenker jo kanskje at det kan være snakk om en øyesykdom her je
 Fredrik: Øyesykdom, nei, det ligger nok et annet sted, om du drar litt nordover og litt innover så kanskje vi nærmer oss…
 [Musikkforslag: Luksus leverpostei – med en eller annen mongolåt]
 
+## Miriam (Karos venninne)
+Fredrik: Da er vi i gang med talene, og vi skal starte med en av Karos absolutte favorittpersoner, verdens beste venninne og en dame med en ekstrem forretningsteft. Miriam!
+Anders: Og med ekstreme fordeler.
+Fredrik: og ekstreme …
+Anders: Nei, dette er absolutt et fyrverkeri av en dame. Det sies at de to havnet på nachspiel med Vinni på en festival for noen år siden, og siden har de hengt sammen.
+Fredrik: De støtter hverandre i tykt og tynt, og nå skal vi se hva brudeparet mener Miriam egentlig har å lære Karo. Snurr film!
+(Spill video)
+
 ## Martin (Peters forlover)
 Anders: Turen har kommet til selveste forloveren til Peter – Martin! Byåsen-patrioten som har fulgt brudgommen i 14 år, helt siden de fant tonen over en kebabpizza på Hovefestivalen.
 Fredrik: De er så tette at Karo innrømmer at Martin til og med har overnattet på deres felles soverom ved et par anledninger.
@@ -461,14 +500,7 @@ Anders: Gutteklubben deres er for øvrig sponsordrevet: kostholdet består utelu
 Fredrik: Og til tross for saftige rykter om at han har satt uoffisielle rekorder på hotellganger i Texas, står han her i kveld som Peters ubestridte bror og forlover. La oss se hva brudeparet har å si!
 (Spill video)
 
-## Karo (bruden)
-Anders: Da har vi kommet til den soleklart viktigste karakteren for kvelden.
-Fredrik: Bruden selv, Karo! Vi har alle lurt på hvorfor Peter egentlig vil gifte seg med henne...
-Anders: Og det fikk vi noen ganske interessante, og kanskje litt interne svar på fra brudgommen selv. Vi snurrer kveldens siste videointro!
-(Spill video)
-
 # LØRDAG
-
 ## Rolf (Karos far)
 Anders: Velkommen til lørdagens store festmiddag! Tradisjonen tro skal vi starte kveldens talerekke med selveste brudens far, Rolf.
 Fredrik: Rolf kalles populært for "Mr. Smiley", og er etter sigende en av de mest sosiale mennene i hele Nord-Norge. Å gå turen fra Villaveien og ned til byen i Narvik tar til vanlig 1 minutt og 40 sekunder... men med Rolf tar det minst tre kvarter, fordi han kjenner og må slå av en prat med absolutt alle på sin vei.
@@ -485,6 +517,12 @@ Fredrik: Det hjalp nok på nervene, men kanskje ikke på språkforståelsen. Kom
 Anders: Men hun nikket og smilte seg gjennom dype samtaler om krig og fred! Han er dessuten en mann som lever strengt etter regelen om at man må yte før man kan slappe av, noe Peter fikk kjenne på da de nylig plantet hekk. La oss se hva brudeparet har å si!
 (Spill video)
 
+## Karo (bruden)
+Anders: Da har vi kommet til den soleklart viktigste karakteren for kvelden.
+Fredrik: Bruden selv, Karo! Vi har alle lurt på hvorfor Peter egentlig vil gifte seg med henne...
+Anders: Og det fikk vi noen ganske interessante, og kanskje litt interne svar på fra brudgommen selv. Vi snurrer kveldens siste videointro!
+(Spill video)
+
 ## Peter (brudgommen)
 Anders: Turen har kommet til brudgommen selv – Peter! Mannen som før han møtte Karo hadde hele livet sitt stramt organisert i et Excel-ark.
 Fredrik: Og det stopper ikke der. Karo falt nemlig pladask da hun så ham på festival, der Peter gikk rundt med samband i øret, 398 ubesvarte anrop på telefonen og et "Trippel A"-pass som fikk ham helt opp på scenen. Karo syntes den kontrollen var det absolutt mest sexy hun noen gang hadde sett!
@@ -499,6 +537,13 @@ Fredrik: Det har tydeligvis vært en intern diskusjon om hvem av søstrene som e
 Anders: Men spøk til side – dette er to søstre med et helt spesielt bånd. Vi snakker om hemmelige morsekoder banket i sengegavlen mellom barnerommene om natten, mange fantastiske år som samboere i Oslo, og et eget SMS-språk som for utenforstående mest av alt ser ut som "Dyslexia Pro".
 Fredrik: La oss se hva brudeparet har å si om Karos uerstattelige lillesøster og forlover. Snurr film!
 
+## Véro (brudens forlover)
+Anders: Nå har turen kommet til en spesielt viktig dame her i kveld – nemlig brudens forlover, Véro! Og her har vi faktisk et aldri så lite habilitetsproblem oppe på toastmaster-pallen...
+Fredrik: Ja, Véro er nemlig min bedre halvdel og fantastiske kone!
+Anders: Véro og Karo har hengt sammen siden de var i starten av 20-årene, og har et så unikt og nært vennskap at de ifølge brudeparet er støpt i nøyaktig samme form. Véro sitter med andre ord på samtlige skjeletter i Karos klesskap.
+Fredrik: Og hun er en uerstattelig støttespiller. Da Karo var på fødestua og skulle få sitt første barn, var Véro så engasjert at hun like godt tok en to timers pause midt i sin egen fødsel – direkte fra et villmannsvorspiel i Hemsedal!
+Anders: Snakk om dedikert venninne og forlover! La oss se hva brudeparet har på hjertet om kona di, Fredrik. Snurr film!
+
 ## Henning (forlover)
 Anders: Turen har kommet til nok en viktig mann ved Peters side – nemlig hans forlover, Henning!
 Fredrik: Og for et fantastisk forbilde han er for brudgommen. En skikkelig bauta og familiemann som virkelig lever livet til det fulle i hvert eneste sekund.
@@ -506,13 +551,6 @@ Anders: Men bak denne staselige og voksne fasaden skjuler det seg en kar med noe
 Fredrik: Ja, Henning parkerer nøyaktig hvor han vil, når han vil. Han er visstnok innehaver av opptil fire nasjonale handicapbevis – eller sitt eget "internasjonale mongobevis" som brudeparet kaller det – så parkeringsvakter har ikke en sjanse.
 Anders: Heldigvis har han sin bedre halvdel, Fiona, som holder ham stramt i ørene og sørger for at han holder seg på matta. La oss se hva brudeparet har å si om kveldens forlover!
 (Spill video)
-
-## Véro (brudens forlover)
-Anders: Nå har turen kommet til en spesielt viktig dame her i kveld – nemlig brudens forlover, Véro! Og her har vi faktisk et aldri så lite habilitetsproblem oppe på toastmaster-pallen...
-Fredrik: Ja, Véro er nemlig min bedre halvdel og fantastiske kone!
-Anders: Véro og Karo har hengt sammen siden de var i starten av 20-årene, og har et så unikt og nært vennskap at de ifølge brudeparet er støpt i nøyaktig samme form. Véro sitter med andre ord på samtlige skjeletter i Karos klesskap.
-Fredrik: Og hun er en uerstattelig støttespiller. Da Karo var på fødestua og skulle få sitt første barn, var Véro så engasjert at hun like godt tok en to timers pause midt i sin egen fødsel – direkte fra et villmannsvorspiel i Hemsedal!
-Anders: Snakk om dedikert venninne og forlover! La oss se hva brudeparet har på hjertet om kona di, Fredrik. Snurr film!
 
 ## Georg (Peters lillebror)
 Anders: Middagen nærmer seg slutten, og det er på tide med kveldens siste og mest kulinariske post på programmet: den tradisjonsrike "Takk for maten"-talen!
@@ -540,6 +578,26 @@ const DEFAULT_PERSONS = ['Anders', 'Fredrik'];
    Andre navn i manuset får en farge etter tur. */
 const SPEAKER_COLORS = { anders: 'rosa', fredrik: 'gronn' };
 const COLOR_CYCLE = ['gul', 'bla', 'rosa', 'gronn'];
+
+/* Programrekkefølgen er bestemt av brudeparet og skal gjelde uansett hvilken
+   rekkefølge postene står i i dokumentet. Hver linje her plukker den første
+   posten som passer; poster vi ikke kjenner igjen havner bakerst, i den
+   rekkefølgen de står i manuset. */
+const PROGRAM = [
+  { dag: 'FREDAG', ord: ['velkomst'] },
+  { dag: 'FREDAG', ord: ['elisabeth'] },
+  { dag: 'FREDAG', ord: ['thomas'] },
+  { dag: 'FREDAG', ord: ['miriam'] },
+  { dag: 'FREDAG', ord: ['martin', 'forlover'] },
+  { dag: 'LØRDAG', ord: ['rolf'] },
+  { dag: 'LØRDAG', ord: ['martin', 'far'] },
+  { dag: 'LØRDAG', ord: ['karo'] },
+  { dag: 'LØRDAG', ord: ['peter'], ikke: ['lillebror', 'tante', 'forlover', 'far'] },
+  { dag: 'LØRDAG', ord: ['silje'] },
+  { dag: 'LØRDAG', ord: ['vero'] },
+  { dag: 'LØRDAG', ord: ['henning'] },
+  { dag: 'LØRDAG', ord: ['georg'] }
+];
 
 const state = {
   intros: [],       // { name, section, lines: [{ type, who, text }] }
@@ -610,12 +668,18 @@ function isDayLine(text) {
     word !== word.toLocaleLowerCase('no');
 }
 
-function looksLikeHeading(line, prev) {
+/* En overskrift står alene: etter luft, etter en dagoverskrift, eller rett
+   etter at forrige post er ferdig (en replikk eller en regibeskjed). Noen
+   eksporter fra Google Docs har ingen blanke linjer i det hele tatt. */
+function looksLikeHeading(line, prev, speakers) {
   const t = line.text;
   if (!t || line.bulleted || t.length > 70) return false;
   if (/[.!?,;:]$/.test(t)) return false;
   if (CUE_LINE.test(t)) return false;
-  return !prev || !prev.text || isDayLine(prev.text);   // står alene, etter luft
+  if (!prev || !prev.text) return true;
+  if (isDayLine(prev.text) || CUE_LINE.test(prev.text)) return true;
+  const m = SPEAKER_LINE.exec(prev.text);
+  return !!(m && speakers.some((s) => same(s, m[1])));
 }
 
 /* En kandidat er en overskrift bare hvis det kommer replikker under den før
@@ -628,7 +692,7 @@ function headingHasLines(lines, from, speakers, prevOf) {
     const m = SPEAKER_LINE.exec(t);
     if (m && speakers.some((s) => same(s, m[1]))) return true;
     if (isDayLine(t)) continue;
-    if (looksLikeHeading(lines[i], prevOf(i))) return false;
+    if (looksLikeHeading(lines[i], prevOf(i), speakers)) return false;
   }
   return false;
 }
@@ -651,7 +715,7 @@ function parseDocument(text) {
   let titleIndex = -1;
   if (!markdown) {
     const first = lines.findIndex((l) => l.text);
-    if (first >= 0 && looksLikeHeading(lines[first], null) && !isDayLine(lines[first].text)) {
+    if (first >= 0 && looksLikeHeading(lines[first], null, speakers) && !isDayLine(lines[first].text)) {
       for (let i = first + 1; i < lines.length; i++) {
         const t = lines[i].text;
         if (!t) continue;
@@ -703,7 +767,7 @@ function parseDocument(text) {
       if (isDayLine(t)) { section = t; return; }
       const bracket = BRACKET_HEADING.exec(t);
       if (bracket) { startIntro(bracket[1]); return; }
-      if (looksLikeHeading(line, prevOf(i)) && headingHasLines(lines, i, speakers, prevOf)) {
+      if (looksLikeHeading(line, prevOf(i), speakers) && headingHasLines(lines, i, speakers, prevOf)) {
         startIntro(t);
         return;
       }
@@ -718,9 +782,35 @@ function parseDocument(text) {
   });
 
   return {
-    intros: intros.filter((i) => i.name && i.lines.length),
+    intros: sorterEtterProgram(intros.filter((i) => i.name && i.lines.length)),
     speakers: speakers.length ? speakers : DEFAULT_PERSONS.slice()
   };
+}
+
+/* ================= programrekkefølge ================= */
+
+const normaliser = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const harOrd = (navn, ord) => new RegExp(`\\b${ord}`, 'i').test(navn);
+
+function sorterEtterProgram(intros) {
+  const igjen = intros.slice();
+  const sortert = [];
+
+  PROGRAM.forEach((post) => {
+    const i = igjen.findIndex((intro) => {
+      const navn = normaliser(intro.name);
+      return post.ord.every((o) => harOrd(navn, o)) &&
+        !(post.ikke || []).some((o) => harOrd(navn, o));
+    });
+    if (i < 0) return;
+    const [treff] = igjen.splice(i, 1);
+    treff.section = post.dag;
+    sortert.push(treff);
+  });
+
+  // Kjenner vi igjen for lite, er dette et annet manus – da rører vi ikke rekkefølgen.
+  if (sortert.length < 4) return intros;
+  return sortert.concat(igjen);
 }
 
 /* ================= .docx ================= */
@@ -797,6 +887,7 @@ async function readFileAsText(file) {
 
 function showView(id) {
   ['#view-setup', '#view-list', '#view-read'].forEach((sel) => { $(sel).hidden = sel !== id; });
+  document.querySelectorAll('.pad').forEach((el) => { el.scrollTop = 0; });
   window.scrollTo(0, 0);
 }
 

@@ -15,6 +15,26 @@ const DEFAULT_PERSONS = ['Anders', 'Fredrik'];
 const SPEAKER_COLORS = { anders: 'rosa', fredrik: 'gronn' };
 const COLOR_CYCLE = ['gul', 'bla', 'rosa', 'gronn'];
 
+/* Programrekkefølgen er bestemt av brudeparet og skal gjelde uansett hvilken
+   rekkefølge postene står i i dokumentet. Hver linje her plukker den første
+   posten som passer; poster vi ikke kjenner igjen havner bakerst, i den
+   rekkefølgen de står i manuset. */
+const PROGRAM = [
+  { dag: 'FREDAG', ord: ['velkomst'] },
+  { dag: 'FREDAG', ord: ['elisabeth'] },
+  { dag: 'FREDAG', ord: ['thomas'] },
+  { dag: 'FREDAG', ord: ['miriam'] },
+  { dag: 'FREDAG', ord: ['martin', 'forlover'] },
+  { dag: 'LØRDAG', ord: ['rolf'] },
+  { dag: 'LØRDAG', ord: ['martin', 'far'] },
+  { dag: 'LØRDAG', ord: ['karo'] },
+  { dag: 'LØRDAG', ord: ['peter'], ikke: ['lillebror', 'tante', 'forlover', 'far'] },
+  { dag: 'LØRDAG', ord: ['silje'] },
+  { dag: 'LØRDAG', ord: ['vero'] },
+  { dag: 'LØRDAG', ord: ['henning'] },
+  { dag: 'LØRDAG', ord: ['georg'] }
+];
+
 const state = {
   intros: [],       // { name, section, lines: [{ type, who, text }] }
   speakers: [],
@@ -84,12 +104,18 @@ function isDayLine(text) {
     word !== word.toLocaleLowerCase('no');
 }
 
-function looksLikeHeading(line, prev) {
+/* En overskrift står alene: etter luft, etter en dagoverskrift, eller rett
+   etter at forrige post er ferdig (en replikk eller en regibeskjed). Noen
+   eksporter fra Google Docs har ingen blanke linjer i det hele tatt. */
+function looksLikeHeading(line, prev, speakers) {
   const t = line.text;
   if (!t || line.bulleted || t.length > 70) return false;
   if (/[.!?,;:]$/.test(t)) return false;
   if (CUE_LINE.test(t)) return false;
-  return !prev || !prev.text || isDayLine(prev.text);   // står alene, etter luft
+  if (!prev || !prev.text) return true;
+  if (isDayLine(prev.text) || CUE_LINE.test(prev.text)) return true;
+  const m = SPEAKER_LINE.exec(prev.text);
+  return !!(m && speakers.some((s) => same(s, m[1])));
 }
 
 /* En kandidat er en overskrift bare hvis det kommer replikker under den før
@@ -102,7 +128,7 @@ function headingHasLines(lines, from, speakers, prevOf) {
     const m = SPEAKER_LINE.exec(t);
     if (m && speakers.some((s) => same(s, m[1]))) return true;
     if (isDayLine(t)) continue;
-    if (looksLikeHeading(lines[i], prevOf(i))) return false;
+    if (looksLikeHeading(lines[i], prevOf(i), speakers)) return false;
   }
   return false;
 }
@@ -125,7 +151,7 @@ function parseDocument(text) {
   let titleIndex = -1;
   if (!markdown) {
     const first = lines.findIndex((l) => l.text);
-    if (first >= 0 && looksLikeHeading(lines[first], null) && !isDayLine(lines[first].text)) {
+    if (first >= 0 && looksLikeHeading(lines[first], null, speakers) && !isDayLine(lines[first].text)) {
       for (let i = first + 1; i < lines.length; i++) {
         const t = lines[i].text;
         if (!t) continue;
@@ -177,7 +203,7 @@ function parseDocument(text) {
       if (isDayLine(t)) { section = t; return; }
       const bracket = BRACKET_HEADING.exec(t);
       if (bracket) { startIntro(bracket[1]); return; }
-      if (looksLikeHeading(line, prevOf(i)) && headingHasLines(lines, i, speakers, prevOf)) {
+      if (looksLikeHeading(line, prevOf(i), speakers) && headingHasLines(lines, i, speakers, prevOf)) {
         startIntro(t);
         return;
       }
@@ -192,9 +218,35 @@ function parseDocument(text) {
   });
 
   return {
-    intros: intros.filter((i) => i.name && i.lines.length),
+    intros: sorterEtterProgram(intros.filter((i) => i.name && i.lines.length)),
     speakers: speakers.length ? speakers : DEFAULT_PERSONS.slice()
   };
+}
+
+/* ================= programrekkefølge ================= */
+
+const normaliser = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const harOrd = (navn, ord) => new RegExp(`\\b${ord}`, 'i').test(navn);
+
+function sorterEtterProgram(intros) {
+  const igjen = intros.slice();
+  const sortert = [];
+
+  PROGRAM.forEach((post) => {
+    const i = igjen.findIndex((intro) => {
+      const navn = normaliser(intro.name);
+      return post.ord.every((o) => harOrd(navn, o)) &&
+        !(post.ikke || []).some((o) => harOrd(navn, o));
+    });
+    if (i < 0) return;
+    const [treff] = igjen.splice(i, 1);
+    treff.section = post.dag;
+    sortert.push(treff);
+  });
+
+  // Kjenner vi igjen for lite, er dette et annet manus – da rører vi ikke rekkefølgen.
+  if (sortert.length < 4) return intros;
+  return sortert.concat(igjen);
 }
 
 /* ================= .docx ================= */
@@ -271,6 +323,7 @@ async function readFileAsText(file) {
 
 function showView(id) {
   ['#view-setup', '#view-list', '#view-read'].forEach((sel) => { $(sel).hidden = sel !== id; });
+  document.querySelectorAll('.pad').forEach((el) => { el.scrollTop = 0; });
   window.scrollTo(0, 0);
 }
 
