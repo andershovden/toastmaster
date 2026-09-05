@@ -31,6 +31,7 @@ const PROGRAM = [
   { dag: 'LØRDAG', ord: ['karo'] },
   { dag: 'LØRDAG', ord: ['peter'], ikke: ['lillebror', 'tante', 'forlover', 'far'] },
   { dag: 'LØRDAG', ord: ['vero'] },
+  { dag: 'LØRDAG', ord: ['aleksander'] },
   { dag: 'LØRDAG', ord: ['henning'] },
   { dag: 'LØRDAG', ord: ['georg'] }
 ];
