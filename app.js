@@ -36,6 +36,16 @@ const PROGRAM = [
   { dag: 'LØRDAG', ord: ['georg'] }
 ];
 
+/* Poster som skal være med selv om de ikke står i dokumentet. Aleksander meldte
+   seg etter at dokumentet var skrevet, så teksten hans ligger her. Står han i
+   dokumentet fra før, brukes den versjonen i stedet – ingen dobbelt oppføring. */
+const FASTE_POSTER = [
+  {
+    kjenn: /aleksander|hetland/i,
+    tekst: 'Aleksander Hetland\nAnders: Nå skjer det noe som ikke sto i programmet for en time siden.\nFredrik: Kveldens neste taler meldte seg nemlig på ... vi kan kalle det i grenseland av fristen.\nAnders: Mannen har brukt hele karrieren på 50 meter bryst, og har både EM-gull og VM-gull på distansen. Alt Aleksander Hetland gjør, gjør han på under halvminuttet.\nFredrik: Inkludert påmeldingen.\nAnders: Han er også den eneste i denne salen som har vunnet både Skal vi danse og Mesternes mester. Så hvis noen lurte på hvem som er kveldens kjendis – det er ikke brudeparet.\nFredrik: Og la oss si det alle tenker, men ingen sier høyt: mannen er urimelig pen. At han i tillegg kan svømme, er nesten litt provoserende.\nAnders: Han har dessuten fått en liten baby hjemme, så nattesøvnen er visstnok mer «lett plask» enn «verdensrekord» om dagen.\nFredrik: Han rakk ikke fristen for videointro heller, så denne må han ta helt selv. Ta godt imot Aleksander Hetland!'
+  }
+];
+
 const state = {
   intros: [],       // { name, section, lines: [{ type, who, text }] }
   speakers: [],
@@ -219,7 +229,7 @@ function parseDocument(text) {
   });
 
   return {
-    intros: sorterEtterProgram(intros.filter((i) => i.name && i.lines.length)),
+    intros: intros.filter((i) => i.name && i.lines.length),
     speakers: speakers.length ? speakers : DEFAULT_PERSONS.slice()
   };
 }
@@ -228,6 +238,15 @@ function parseDocument(text) {
 
 const normaliser = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const harOrd = (navn, ord) => new RegExp(`\\b${ord}`, 'i').test(navn);
+
+function medFastePoster(intros) {
+  FASTE_POSTER.forEach((post) => {
+    if (intros.some((intro) => post.kjenn.test(intro.name))) return;
+    const ekstra = parseDocument(post.tekst).intros[0];
+    if (ekstra) intros.push(ekstra);
+  });
+  return intros;
+}
 
 function sorterEtterProgram(intros) {
   const igjen = intros.slice();
@@ -499,6 +518,7 @@ function showError(msg) {
 
 function loadText(text, { remember = true, view = true } = {}) {
   const parsed = parseDocument(text);
+  parsed.intros = sorterEtterProgram(medFastePoster(parsed.intros));
   if (!parsed.intros.length) {
     showError('Fant ingen poster i teksten. Hver taler trenger en egen overskriftslinje.');
     return false;
